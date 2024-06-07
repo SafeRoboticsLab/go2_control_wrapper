@@ -1,9 +1,6 @@
-from inverse_kinematics.inverse_kinematics_controller import InverseKinematicsController
-import time, sys
-import numpy as np
-from grpy.mb80v2 import MB80v2
 import socket
 import select
+import time
 
 # SETUP COMMAND RECEIVING SERVER
 HOST = "192.168.0.248"
@@ -29,14 +26,21 @@ s.setblocking(0)
 def main():
     try:
         while isConnected:
-            ready = select.select([s], [], [], 0.01)
-            if ready[0]:
-                data = s.recv(1024)
-                data = data.decode("utf-8")
-                print(data)
+          # request
+          s.sendall(b'request')
+          print("request sent")
+
+          # wait 
+          while not select.select([s], [], [], 0.01)[0]:
+            print("\twait for response")
+            time.sleep(1.0)
+          
+          # responded
+          data = s.recv(1024)
+          data = data.decode("utf-8")
+          print("\tResponded:", data)
     except KeyboardInterrupt:
-        sittingDown()
-        mb.rxstop()
+      print("done")
 
 if __name__ == "__main__":
     main()
