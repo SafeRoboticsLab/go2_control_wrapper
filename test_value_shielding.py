@@ -17,8 +17,13 @@ def transition(cur, new):
       count += 1
       cur_time = time.time()
 
+# controller = InverseKinematicsController(
+#   Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.25, tibia=0.27, L=2.0, angle=0, T=0.4, dt=0.02
+#   # Xdist=0.39, Ydist=0.28, height=0.30, coxa=0.02, femur=0.21, tibia=0.25, L=2.0, angle=0, T=0.5, dt=0.02
+# )
+
 controller = InverseKinematicsController(
-  Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.23, tibia=0.25, L=2.0, angle=0, T=0.6, dt=0.02
+    Xdist=0.387, Ydist=0.284, height=0.25, coxa=0.03, femur=0.2, tibia=0.2, L=2.0, angle=0, T=0.4, dt=0.02
 )
 
 sim_order = ["FL", "BL", "FR", "BR"]
@@ -28,7 +33,6 @@ wrapper = Wrapper()
 # safetyEnforcer = SafetyEnforcer(epsilon=np.inf)
 # perf only
 safetyEnforcer = SafetyEnforcer(epsilon=-np.inf)
-
 
 stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8] # following real order
 sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5, -2.5] # following real order

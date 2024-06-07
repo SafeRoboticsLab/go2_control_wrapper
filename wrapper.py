@@ -35,7 +35,7 @@ class Wrapper:
         self.cmd.motor_cmd[i].kd = 0
         self.cmd.motor_cmd[i].tau = 0
     
-    self.kp = [65.0] * 12
+    self.kp = [60.0] * 12
     self.kd = [5.0] * 12
     self.order = ["FR", "FL", "BR", "BL"] # actual output of Go2, DO NOT EDIT
 

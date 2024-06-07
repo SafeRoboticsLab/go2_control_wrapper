@@ -23,16 +23,7 @@ def transition(cur, new):
             cur_time = time.time()
 
 
-controller = InverseKinematicsController(Xdist=0.37,
-                                         Ydist=0.29,
-                                         height=0.30,
-                                         coxa=0.02,
-                                         femur=0.23,
-                                         tibia=0.25,
-                                         L=2.0,
-                                         angle=0,
-                                         T=0.6,
-                                         dt=0.02)
+controller = InverseKinematicsController(Xdist=0.387, Ydist=0.284, height=0.25, coxa=0.03, femur=0.2, tibia=0.2, L=2.0, angle=0, T=0.4, dt=0.02)
 
 g_x = np.inf
 l_x = np.inf

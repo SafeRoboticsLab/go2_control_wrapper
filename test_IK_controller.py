@@ -17,19 +17,19 @@ def transition(cur, new):
       cur_time = time.time()
 
 # high speed, no blocking
-forward_controller = InverseKinematicsController(
-  Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.23, tibia=0.25, L=3.0, angle=0, T=0.6, dt=0.005
-)
-backward_controller = InverseKinematicsController(
-  Xdist=0.37, Ydist=0.29, height=0.25, coxa=0.02, femur=0.23, tibia=0.25, L=1.5, T=0.8, dt=0.005
-)
-
 # forward_controller = InverseKinematicsController(
-#   Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.23, tibia=0.25, L=3.0, angle=0, T=1.0, dt=0.01
+#   Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.23, tibia=0.25, L=3.0, angle=0, T=0.6, dt=0.005
 # )
 # backward_controller = InverseKinematicsController(
-#   Xdist=0.37, Ydist=0.29, height=0.25, coxa=0.02, femur=0.23, tibia=0.25, L=1.5, T=1.0, dt=0.01
+#   Xdist=0.37, Ydist=0.29, height=0.25, coxa=0.02, femur=0.23, tibia=0.25, L=1.5, T=0.8, dt=0.005
 # )
+
+forward_controller = InverseKinematicsController(
+  Xdist=0.37, Ydist=0.29, height=0.30, coxa=0.02, femur=0.23, tibia=0.25, L=3.0, angle=0, T=1.0, dt=0.01
+)
+backward_controller = InverseKinematicsController(
+  Xdist=0.37, Ydist=0.29, height=0.25, coxa=0.02, femur=0.23, tibia=0.25, L=1.5, T=1.0, dt=0.01
+)
 
 wrapper = Wrapper()
 
@@ -76,7 +76,8 @@ try:
         action = backward_controller.get_action(joint_order=wrapper.order, offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
       
     if time.time() - start_time > duration[mode]:
-      mode = (mode + 1)%4
+      # mode = (mode + 1)%4
+      mode = min(1, mode+1)
       start_time = time.time()
 
 except KeyboardInterrupt:
