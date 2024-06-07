@@ -88,9 +88,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                                                  coxa=0.03,
                                                  femur=0.2,
                                                  tibia=0.2,
-                                                 L=0.8,
+                                                 L=2.0,
                                                  angle=0,
-                                                 T=1.0,
+                                                 T=0.4,
                                                  dt=0.01)
 
         while True:
