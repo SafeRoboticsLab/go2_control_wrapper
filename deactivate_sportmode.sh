@@ -1,0 +1,1 @@
+./unitree_sdk2/build/stand_example_go2 eth0

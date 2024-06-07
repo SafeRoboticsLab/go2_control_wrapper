@@ -81,7 +81,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         prev_info = {"g_x": np.inf, "l_x": np.inf}
         prev_done = True
         L_horizon = 3
-        horizon = 300
+        horizon = 100
         controller = InverseKinematicsController(Xdist=0.387,
                                                  Ydist=0.284,
                                                  height=0.25,

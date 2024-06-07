@@ -23,7 +23,16 @@ def transition(cur, new):
             cur_time = time.time()
 
 
-controller = InverseKinematicsController(Xdist=0.387, Ydist=0.284, height=0.25, coxa=0.03, femur=0.2, tibia=0.2, L=2.0, angle=0, T=0.4, dt=0.02)
+controller = InverseKinematicsController(Xdist=0.387,
+                                         Ydist=0.284,
+                                         height=0.25,
+                                         coxa=0.03,
+                                         femur=0.2,
+                                         tibia=0.2,
+                                         L=2.0,
+                                         angle=0,
+                                         T=0.4,
+                                         dt=0.02)
 
 g_x = np.inf
 l_x = np.inf
@@ -76,8 +85,8 @@ try:
             safetyEnforcer.is_shielded = True
             # switch between fallback and target stable stance, depending on the current state
             stable_stance = np.array([
-                0.5, 0.7, -1.5, 0.5, 0.7, -1.5, -0.5, 0.7, -1.5, -0.5, 0.7,
-                -1.5
+                0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7,
+                -1.2
             ])  # sim order
             margin = safetyEnforcer.target_margin(wrapper.state)
             lx = min(margin.values())
@@ -85,10 +94,11 @@ try:
             if lx > -0.1:
                 action = stable_stance
             else:
-                action = safetyEnforcer.ctrl(np.array(wrapper.state)) + np.array([
-                    0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2, 0.6,
-                    -1.5
-                ])  # sim order
+                action = safetyEnforcer.ctrl(np.array(
+                    wrapper.state)) + np.array([
+                        0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2,
+                        0.6, -1.5
+                    ])  # sim order
         else:
             action = np.array(
                 controller.get_action(
@@ -110,8 +120,8 @@ try:
                     l_x = data["l_x"]
                     if g_x < 0 or l_x < 0:
                         stable_stance = np.array([
-                            0.5, 0.7, -1.5, 0.5, 0.7, -1.5, -0.5, 0.7, -1.5,
-                            -0.5, 0.7, -1.5
+                            0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5,
+                            -0.5, 0.7, -1.2
                         ])  # sim order
                         margin = safetyEnforcer.target_margin(wrapper.state)
                         lx = min(margin.values())
@@ -129,14 +139,14 @@ try:
             step += 1
         wrapper.update(action, input_order=sim_order)
 except KeyboardInterrupt:
-  transition(wrapper.map(action, sim_order, wrapper.order), stand)
-  transition(stand, sit)
+    transition(wrapper.map(action, sim_order, wrapper.order), stand)
+    transition(stand, sit)
 
 except Exception as e:
-  print(e)
-  transition(wrapper.map(action, sim_order, wrapper.order), stand)
-  transition(stand, sit)
+    print(e)
+    transition(wrapper.map(action, sim_order, wrapper.order), stand)
+    transition(stand, sit)
 
 print("lock in SIT mode, keyboard interrupt to stop")
 while True:
-  wrapper.update(sit)
+    wrapper.update(sit)
