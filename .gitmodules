@@ -4,3 +4,6 @@
 [submodule "unitree_sdk2"]
 	path = unitree_sdk2
 	url = https://github.com/unitreerobotics/unitree_sdk2.git
+[submodule "safe_adaptation_dev"]
+	path = safe_adaptation_dev
+	url = https://github.com/SafeRoboticsLab/safe_adaptation_dev.git
