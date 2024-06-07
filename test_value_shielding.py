@@ -25,9 +25,9 @@ sim_order = ["FL", "BL", "FR", "BR"]
 wrapper = Wrapper()
 # safetyEnforcer = SafetyEnforcer(epsilon=-0.9)
 # shield only
-safetyEnforcer = SafetyEnforcer(epsilon=np.inf)
+# safetyEnforcer = SafetyEnforcer(epsilon=np.inf)
 # perf only
-# safetyEnforcer = SafetyEnforcer(epsilon=-np.inf)
+safetyEnforcer = SafetyEnforcer(epsilon=-np.inf)
 
 
 stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8] # following real order

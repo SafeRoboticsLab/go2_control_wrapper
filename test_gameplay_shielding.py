@@ -9,6 +9,7 @@ import os
 from inverse_kinematics.inverse_kinematics_controller import InverseKinematicsController
 from wrapper import Wrapper
 from safety_enforcer import SafetyEnforcer
+import json
 
 
 def transition(cur, new):
@@ -93,7 +94,7 @@ try:
             if lx > -0.1:
                 action = stable_stance
             else:
-                action = safetyEnforcer.ctrl(wrapper.state) + np.array([
+                action = safetyEnforcer.ctrl(np.array(wrapper.state)) + np.array([
                     0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2, 0.6,
                     -1.5
                 ])  # sim order
@@ -113,7 +114,7 @@ try:
             if step > L_horizon:
                 if select.select([s], [], [], 0.01)[0]:
                     data = s.recv(1024)
-                    data = data.decode("utf-8")
+                    data = json.loads(data.decode("utf-8"))
                     g_x = data["g_x"]
                     l_x = data["l_x"]
                     if g_x < 0 or l_x < 0:
@@ -128,12 +129,23 @@ try:
                             action = stable_stance
                         else:
                             action = safetyEnforcer.ctrl(
-                                wrapper.state) + np.array([
+                                np.array(wrapper.state)) + np.array([
                                     0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6,
                                     -1.5, -0.2, 0.6, -1.5
                                 ])  # sim order
                     requested = False
                     step = 0
+            step += 1
         wrapper.update(action, input_order=sim_order)
 except KeyboardInterrupt:
-    print("done")
+  transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  transition(stand, sit)
+
+except Exception as e:
+  print(e)
+  transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  transition(stand, sit)
+
+print("lock in SIT mode, keyboard interrupt to stop")
+while True:
+  wrapper.update(sit)

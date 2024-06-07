@@ -2,6 +2,7 @@ import socket
 import select
 import time
 import struct
+import json
 
 # SETUP COMMAND RECEIVING SERVER
 HOST = "192.168.0.248"
@@ -42,7 +43,7 @@ def main():
             if ready:
                 data = s.recv(1024)
                 data = data.decode("utf-8")
-                print(data)
+                print(json.loads(data)["g_x"])
                 requested = False
     except KeyboardInterrupt:
         print("done")
