@@ -17,8 +17,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print('Connected by', addr)
         while True:
             data = conn.recv(1024)
-            print("State:", struct.unpack("!36f", data[-144:]))
+            print("State:", struct.unpack("!48f", data[-192:]))
             print("\tRun gameplay")
             for i in range(200):
-              p.stepSimulation()
+                p.stepSimulation()
             conn.sendall(bytes("response", 'utf-8'))

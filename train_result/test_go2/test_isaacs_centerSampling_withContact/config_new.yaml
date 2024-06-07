@@ -8,10 +8,10 @@ agent:
   dyn: Go2Pybullet
   footprint: none
   verbose: false
-  gui: false
+  gui: true
   gui_imaginary: false
   dt: 0.02
-  apply_force: false # warning, currently this will also affect adversarial force
+  apply_force: true # warning, currently this will also affect adversarial force
   replace_adv_with_dr: false # if true, this will replace the adversarial force with dr force
   force: 50
   force_scale: 1.0
@@ -214,7 +214,7 @@ arch:
     pretrained_path:
 
 eval:
-  model_type: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
-  step: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  model_type: [manual, manual] # [ctrl, dstb], highest, safest, worst, manual
+  step: [7_400_000, 7_500_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   eval_timeout: 1000 # how long do we evaluate in real rollout env
   imaginary_horizon: 300 # the horizon of the imaginary env

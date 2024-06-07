@@ -24,18 +24,29 @@ except OSError:
 
 s.setblocking(0)
 
+
 def main():
+    requested = False
     try:
         while isConnected:
-          state = list(range(36))
-          s.sendall(struct.pack("!36f", *state))
-          ready = select.select([s], [], [], 0.01)[0]
-          if ready:
-            data = s.recv(1024)
-            data = data.decode("utf-8")
-            print(data)
+            # state = list(range(48))
+            state = [
+                0, 0, 0, 0.2, 0.4, 0, 0, 0, 0, 0.75, -1.8, 0, 0.75, -1.8, 0,
+                0.75, -1.8, 0, 0.75, -1.8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            ]
+            if not requested:
+                s.sendall(struct.pack("!48f", *state))
+                requested = True
+            ready = select.select([s], [], [], 0.01)[0]
+            if ready:
+                data = s.recv(1024)
+                data = data.decode("utf-8")
+                print(data)
+                requested = False
     except KeyboardInterrupt:
-      print("done")
+        print("done")
+
 
 if __name__ == "__main__":
     main()
