@@ -8,7 +8,7 @@ agent:
   dyn: Go2Pybullet
   footprint: none
   verbose: false
-  gui: true
+  gui: false
   gui_imaginary: false
   dt: 0.02
   apply_force: true # warning, currently this will also affect adversarial force
@@ -64,12 +64,12 @@ agent:
   target_margin:
     - corner_height
     - toe_height
-    - body_ang_x
-    - body_ang_y
-    - body_ang_z
-    - x_dot
-    - y_dot
-    - z_dot
+    # - body_ang_x
+    # - body_ang_y
+    # - body_ang_z
+    # - x_dot
+    # - y_dot
+    # - z_dot
   safety_margin:
     - corner_height
     - elbow_height
