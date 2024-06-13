@@ -24,7 +24,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     with conn:
         print('Connected by', addr)
 
-        config_file = "train_result/test_go2/test_isaacs_centerSampling_withContact/config_new.yaml"
+        # config_file = "train_result/test_go2/test_isaacs_centerSampling_withContact/config_new.yaml"
+        config_file = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx/config_new.yaml"
 
         # Loads config.
         cfg = OmegaConf.load(config_file)
@@ -114,23 +115,25 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         # apply prev result
                         if prev_info["g_x"] < 0 or prev_info["l_x"] < 0:
                             # prev gameplay failed, run shielding for L steps
+                            # if min(env.agent.dyn.robot.target_margin().values()) > 0.0:
+                            #     u = torch.FloatTensor(np.array([
+                            #         0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2
+                            #     ]) - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)
+                            # else:
+                            #     u = solver.ctrl.net(s.float().to(solver.device))
                             u = solver.ctrl.net(s.float().to(solver.device))
                         else:
                             # prev gameplay is successful, run task
                             new_joint_pos = controller.get_action(
                                 joint_order=["FL", "BL", "FR", "BR"],
                                 offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                            u = torch.FloatTensor(new_joint_pos - np.array(
-                                env.agent.dyn.robot.get_joint_position())).to(
-                                    solver.device)
+                            u = torch.FloatTensor(new_joint_pos - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)
                     elif counter // L_horizon == 1:
                         # candidate - task policy
                         new_joint_pos = controller.get_action(
                             joint_order=["FL", "BL", "FR", "BR"],
                             offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                        u = torch.FloatTensor(new_joint_pos - np.array(
-                            env.agent.dyn.robot.get_joint_position())).to(
-                                solver.device)
+                        u = torch.FloatTensor(new_joint_pos - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)
                     else:
                         # back to shielding
                         u = solver.ctrl.net(s.float().to(solver.device))
@@ -141,9 +144,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         if i == "ctrl":
                             s_dstb.append(u)
                 d = solver.dstb.net(*s_dstb)
-                critic_q = max(
-                    solver.critic.net(s.float().to(solver.device),
-                                      solver.combine_action(u, d)))
+                # critic_q = max(
+                #     solver.critic.net(s.float().to(solver.device),
+                #                       solver.combine_action(u, d)))
                 a = {'ctrl': u.detach().numpy(), 'dstb': d.detach().numpy()}
                 s_, r, done, info = env.step(a, cast_torch=True)
                 s = s_

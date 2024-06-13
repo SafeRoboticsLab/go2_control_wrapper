@@ -19,7 +19,7 @@ agent:
   force_info:
   link_name: 
   rotate_reset: true
-  height_reset: both
+  height_reset: stand
   force_type: uniform
   terrain: normal
   terrain_height: 0.1
@@ -52,12 +52,12 @@ agent:
   target_margin:
     - corner_height
     - toe_height
-    - body_ang_x
-    - body_ang_y
-    - body_ang_z
-    - x_dot
-    - y_dot
-    - z_dot
+    # - body_ang_x
+    # - body_ang_y
+    # - body_ang_z
+    # - x_dot
+    # - y_dot
+    # - z_dot
   safety_margin:
     - corner_height
     - elbow_height
@@ -202,7 +202,7 @@ arch:
     pretrained_path:
 
 eval:
-  model_type: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
-  step: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  model_type: [manual, manual] # [ctrl, dstb], highest, safest, worst, manual
+  step: [7_200_000, 8_000_001] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   eval_timeout: 1000 # how long do we evaluate in real rollout env
   imaginary_horizon: 500 # the horizon of the imaginary env
