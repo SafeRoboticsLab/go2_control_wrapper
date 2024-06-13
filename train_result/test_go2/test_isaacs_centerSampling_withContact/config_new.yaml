@@ -19,7 +19,7 @@ agent:
   force_info:
   link_name: 
   rotate_reset: true
-  height_reset: both
+  height_reset: stand
   force_type: uniform
   terrain: normal
   terrain_height: 0.1
