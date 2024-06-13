@@ -37,7 +37,7 @@ controller = InverseKinematicsController(Xdist=0.387,
 g_x = np.inf
 l_x = np.inf
 requested = False
-L_horizon = 3
+L_horizon = 10
 step = 0
 
 sim_order = ["FL", "BL", "FR", "BR"]
@@ -81,6 +81,7 @@ s.setblocking(0)
 
 try:
     while isConnected:
+        state = wrapper.state[:]
         if g_x < 0 or l_x < 0:
             safetyEnforcer.is_shielded = True
             # switch between fallback and target stable stance, depending on the current state
@@ -88,14 +89,14 @@ try:
                 0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7,
                 -1.2
             ])  # sim order
-            margin = safetyEnforcer.target_margin(wrapper.state)
+            margin = safetyEnforcer.target_margin(state)
             lx = min(margin.values())
-            joint_pos = wrapper.state[8:20]
+            joint_pos = state[8:20]
             if lx > -0.1:
                 action = stable_stance
             else:
                 action = safetyEnforcer.ctrl(np.array(
-                    wrapper.state)) + np.array([
+                    state)) + np.array([
                         0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2,
                         0.6, -1.5
                     ])  # sim order
@@ -125,7 +126,7 @@ try:
                         ])  # sim order
                         margin = safetyEnforcer.target_margin(wrapper.state)
                         lx = min(margin.values())
-                        joint_pos = wrapper.state[8:20]
+                        joint_pos = state[8:20]
                         if lx > -0.1:
                             action = stable_stance
                         else:
