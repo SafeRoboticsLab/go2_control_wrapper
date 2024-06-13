@@ -29,8 +29,12 @@ class SafetyEnforcer:
         self.imaginary_horizon = imaginary_horizon
 
         # training_dir = "train_result/test_go2/test_isaacs_centerSampling"
-        training_dir = "train_result/test_go2/test_isaacs_centerSampling_withContact"
-        load_dict = {"ctrl": 7_400_000, "dstb": 7_500_000}
+
+        # training_dir = "train_result/test_go2/test_isaacs_centerSampling_withContact"
+        # load_dict = {"ctrl": 7_400_000, "dstb": 7_500_000}
+
+        training_dir = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx"
+        load_dict = {"ctrl": 7_000_000, "dstb": 7_200_000}
 
         model_path = os.path.join(parent_dir, training_dir, "model")
         model_config_path = os.path.join(parent_dir, training_dir,
@@ -125,8 +129,10 @@ class SafetyEnforcer:
 
     def get_safety_action(self, state, target=True, threshold=0.0):
         assert len(state) == 36
-        
-        stable_stance = np.array([-0.5, 0.7, -2.0, 0.5, 0.7, -2.0, -0.5, 0.7, -2.0, -0.5, 0.7, -2.0])
+
+        stable_stance = np.array([
+            -0.5, 0.7, -2.0, 0.5, 0.7, -2.0, -0.5, 0.7, -2.0, -0.5, 0.7, -2.0
+        ])
 
         if not target:
             return self.ctrl(state)
@@ -139,7 +145,9 @@ class SafetyEnforcer:
             if lx > threshold:  # account for sensor noise
                 # in target set, just output stable stance
                 #! TODO: enforce stable stance instead of just outputting zero changes to the current stance
-                return np.clip(stable_stance - spirit_joint_pos, -np.ones(12) * 0.1, np.ones(12) * 0.1)
+                return np.clip(stable_stance - spirit_joint_pos,
+                               -np.ones(12) * 0.1,
+                               np.ones(12) * 0.1)
             else:
                 return self.ctrl(state)
 
