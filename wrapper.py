@@ -39,7 +39,7 @@ class Wrapper:
     self.kd = [5.0] * 12
     self.order = ["FR", "FL", "BR", "BL"] # actual output of Go2, DO NOT EDIT
 
-    self.state = [0] * 32 # x_dot, y_dot, z_dot, roll, pitch, w_x, w_y, w_z, joint_pos x 12, joint_vel x 12
+    self.state = [0] * 36 # x_dot, y_dot, z_dot, roll, pitch, w_x, w_y, w_z, joint_pos x 12, joint_vel x 12
     
     self.msgs = []
   

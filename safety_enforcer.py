@@ -34,7 +34,7 @@ class SafetyEnforcer:
         # load_dict = {"ctrl": 7_400_000, "dstb": 7_500_000}
 
         training_dir = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx"
-        load_dict = {"ctrl": 7_000_000, "dstb": 7_200_000}
+        load_dict = {"ctrl": 7_200_000, "dstb": 8_000_001}
 
         model_path = os.path.join(parent_dir, training_dir, "model")
         model_config_path = os.path.join(parent_dir, training_dir,
@@ -118,14 +118,6 @@ class SafetyEnforcer:
         # state = np.concatenate((state[3:8], state[9:]), axis=0)
         assert len(state) == 36
         return {"roll": 0.2 - abs(state[3]), "pitch": 0.2 - abs(state[4])}
-        # return {
-        #     "body_ang_x": 0.17444 - abs(state[5]),
-        #     "body_ang_y": 0.17444 - abs(state[6]),
-        #     "body_ang_z": 0.17444 - abs(state[7]),
-        #     "x_dot": 0.2 - abs(state[0]),
-        #     "y_dot": 0.2 - abs(state[1]),
-        #     "z_dot": 0.2 - abs(state[2])
-        # }
 
     def get_safety_action(self, state, target=True, threshold=0.0):
         assert len(state) == 36
@@ -140,14 +132,14 @@ class SafetyEnforcer:
             # switch between fallback and target stable stance, depending on the current state
             margin = self.target_margin(state)
             lx = min(margin.values())
-            spirit_joint_pos = state[8:20]
+            current_joint_pos = state[8:20]
 
             if lx > threshold:  # account for sensor noise
                 # in target set, just output stable stance
                 #! TODO: enforce stable stance instead of just outputting zero changes to the current stance
-                return np.clip(stable_stance - spirit_joint_pos,
-                               -np.ones(12) * 0.1,
-                               np.ones(12) * 0.1)
+                return np.clip(stable_stance - current_joint_pos,
+                               -np.ones(12) * 0.5,
+                               np.ones(12) * 0.5)
             else:
                 return self.ctrl(state)
 

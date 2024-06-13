@@ -37,17 +37,15 @@ controller = InverseKinematicsController(Xdist=0.387,
 g_x = np.inf
 l_x = np.inf
 requested = False
-L_horizon = 10
+L_horizon = 1
 step = 0
 
 sim_order = ["FL", "BL", "FR", "BR"]
 wrapper = Wrapper()
 safetyEnforcer = SafetyEnforcer(epsilon=0.0)
 
-stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75,
-         -1.8]  # following real order
-sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5,
-       -2.5]  # following real order
+stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8]  # following real order
+sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5, -2.5]  # following real order
 
 # action will ALWAYS in sim_order
 action = wrapper.map(stand, wrapper.order, sim_order)
@@ -81,35 +79,30 @@ s.setblocking(0)
 
 try:
     while isConnected:
-        state = wrapper.state[:]
+        #! WARNING: the joint pos and vel in wrapper.state is of real Go2, NOT sim
+        state = wrapper.state[:8] + wrapper.map(wrapper.state[8:20], wrapper.order, sim_order) + wrapper.map(wrapper.state[20:32], wrapper.order, sim_order) + wrapper.state[32:]
+        
         if g_x < 0 or l_x < 0:
             safetyEnforcer.is_shielded = True
             # switch between fallback and target stable stance, depending on the current state
-            stable_stance = np.array([
-                0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7,
-                -1.2
-            ])  # sim order
+            stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
             margin = safetyEnforcer.target_margin(state)
             lx = min(margin.values())
-            joint_pos = state[8:20]
-            if lx > -0.1:
+
+            if lx > 0.0: # -0.1
                 action = stable_stance
             else:
-                action = safetyEnforcer.ctrl(np.array(
-                    state)) + np.array([
-                        0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2,
-                        0.6, -1.5
-                    ])  # sim order
+                # center_sampling
+                # action = safetyEnforcer.ctrl(np.array(state)) + np.array([0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2, 0.6, -1.5])  # sim order
+
+                # increment
+                action = safetyEnforcer.ctrl(np.array(state)) + np.array(state[8:20])
         else:
-            action = np.array(
-                controller.get_action(
-                    joint_order=sim_order,
-                    offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+            action = np.array(controller.get_action(joint_order=sim_order, offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 
         if not requested:
-            ctrl = action - np.array(
-                wrapper.map(wrapper.state[8:20], wrapper.order, sim_order))
-            data = [*wrapper.state, *ctrl]
+            ctrl = action - np.array(state[8:20])
+            data = [*state, *ctrl]
             s.sendall(struct.pack("!48f", *data))
             requested = True
         else:
@@ -120,21 +113,18 @@ try:
                     g_x = data["g_x"]
                     l_x = data["l_x"]
                     if g_x < 0 or l_x < 0:
-                        stable_stance = np.array([
-                            0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5,
-                            -0.5, 0.7, -1.2
-                        ])  # sim order
-                        margin = safetyEnforcer.target_margin(wrapper.state)
+                        stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
+                        margin = safetyEnforcer.target_margin(state)
                         lx = min(margin.values())
-                        joint_pos = state[8:20]
-                        if lx > -0.1:
+
+                        if lx > 0: # -0.1
                             action = stable_stance
                         else:
-                            action = safetyEnforcer.ctrl(
-                                np.array(wrapper.state)) + np.array([
-                                    0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6,
-                                    -1.5, -0.2, 0.6, -1.5
-                                ])  # sim order
+                            # center_sampling
+                            # action = safetyEnforcer.ctrl(np.array(state)) + np.array([0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2, 0.6, -1.5])  # sim order
+
+                            # increment
+                            action = safetyEnforcer.ctrl(np.array(state)) + np.array(state[8:20])
                     requested = False
                     step = 0
             step += 1
