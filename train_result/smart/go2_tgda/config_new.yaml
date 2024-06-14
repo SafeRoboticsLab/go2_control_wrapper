@@ -1,7 +1,7 @@
 environment:
   seed: 0
-  timeout: 500
-  end_criterion: reach-avoid
+  timeout: 100
+  end_criterion: failure
 
 agent:
   agent_id: ego
@@ -10,8 +10,8 @@ agent:
   verbose: false
   gui: false
   gui_imaginary: false
-  dt: 0.01
-  apply_force: true # warning, currently this will also affect adversarial force
+  dt: 0.02
+  apply_force: false # warning, currently this will also affect adversarial force
   replace_adv_with_dr: false # if true, this will replace the adversarial force with dr force
   force: 50
   force_scale: 1.0
@@ -19,7 +19,7 @@ agent:
   force_info:
   link_name: 
   rotate_reset: true
-  height_reset: stand
+  height_reset: both
   force_type: uniform
   terrain: normal
   terrain_height: 0.1
@@ -28,18 +28,18 @@ agent:
   envtype: normal
   action_range: 
     ctrl: &ctrl_range
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
     dstb: &dstb_range
       - [-1., 1.]
       - [-1., 1.]
@@ -47,17 +47,29 @@ agent:
       - [-0.15, 0.15]
       - [-0.04, 0.04]
       - [-0.05, 0.05]
-  action_type: increment
+  action_type: center_sampling
   action_center:
+    - 0.2 
+    - 0.6
+    - -1.5
+    - 0.2 
+    - 0.6
+    - -1.5
+    - -0.2 
+    - 0.6
+    - -1.5
+    - -0.2 
+    - 0.6
+    - -1.5
   target_margin:
     - corner_height
     - toe_height
-    # - body_ang_x
-    # - body_ang_y
-    # - body_ang_z
-    # - x_dot
-    # - y_dot
-    # - z_dot
+    - body_ang_x
+    - body_ang_y
+    - body_ang_z
+    - x_dot
+    - y_dot
+    - z_dot
   safety_margin:
     - corner_height
     - elbow_height
@@ -73,6 +85,8 @@ solver:
   num_envs: 1
   num_actors: 2
   num_critics: 1
+  # == SMART-related ==
+  grad_method: tgda # tgda, tgda_hybrid
   # == hyperparameters of learning ==
   max_steps: 8_000_000
   opt_period: 10_000
@@ -81,7 +95,7 @@ solver:
   min_steps_b4_opt: 100_000
   warmup_steps: 500_000
   batch_size: 256
-  ctrl_update_ratio: 2
+  ctrl_update_ratio: 1
   warmup_action_range:
     ctrl: *ctrl_range
     dstb: *dstb_range
@@ -89,19 +103,19 @@ solver:
   softmax_rationality: 3.0
   # == logging ==
   use_wandb: true
-  project_name: spirit-rl-pybullet
-  name: go2_isaacs_scratch_gx
+  project_name: SMART
+  name: go2_tgda_debug
   max_model: 20
   save_top_k:
     ctrl: 10
     dstb: 10
-  out_folder: train_result/test_go2/test_isaacs_postCoRL_arbitraryGx
+  out_folder: train_result/smart/go2_tgda
   eval:   
     b4_learn: true
     metric: reach-avoid
     aux_metric: [ep_length, safety]
     num_trajectories: 20
-    timeout: 500
+    timeout: 100
     end_criterion: reach-avoid
   obs_dim: 36
   obsrv_list:  *obsrv_list
@@ -124,22 +138,22 @@ solver:
     mode: reach-avoid
     terminal_type: all  # use min{l_x, g_x} for terminal states/obsrvs.
     opt_type: AdamW
-    update_target_period: 2
+    update_target_period: 1
   actor_0:
     eval: false
     net_name: ctrl
     actor_type: max
     learn_alpha: true
     lr: 0.0001
-    lr_al: 0.000125
+    lr_al: 0.0001
     lr_schedule: false
-    lr_al_schedule: false
+    lr_al_schedule: true
     alpha: 0.1
     min_alpha: 0.001
     opt_type: AdamW
-    update_period: 2
+    update_period: 1
     lr_end: 0.0001
-    lr_al_end: 0.00005
+    lr_al_end: 0.0000001
     lr_period: 50000
     lr_al_period: 100000
     lr_decay: 0.9    
@@ -149,16 +163,16 @@ solver:
     net_name: dstb
     actor_type: min
     learn_alpha: true
-    lr: 0.0001
-    lr_al: 0.0000125
+    lr: 0.0005
+    lr_al: 0.0001
     lr_schedule: false
-    lr_al_schedule: false
+    lr_al_schedule: true
     alpha: 0.1
     min_alpha: 0.001
     opt_type: AdamW
-    update_period: 2
+    update_period: 1
     lr_end: 0.0001
-    lr_al_end: 0.000005
+    lr_al_end: 0.0000001
     lr_period: 50000
     lr_al_period: 100000
     lr_decay: 0.9    
@@ -202,7 +216,7 @@ arch:
     pretrained_path:
 
 eval:
-  model_type: [manual, manual] # [ctrl, dstb], highest, safest, worst, manual
-  step: [7_000_000, 6_900_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  model_type: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
+  step: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   eval_timeout: 1000 # how long do we evaluate in real rollout env
-  imaginary_horizon: 500 # the horizon of the imaginary env
+  imaginary_horizon: 100 # the horizon of the imaginary env

@@ -92,7 +92,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                                                  L=2.0,
                                                  angle=0,
                                                  T=0.4,
-                                                 dt=0.01)
+                                                 dt=0.02)
 
         while True:
             data = conn.recv(1024)
@@ -115,7 +115,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         # apply prev result
                         if prev_info["g_x"] < 0 or prev_info["l_x"] < 0:
                             # prev gameplay failed, run shielding for L steps
-                            # if min(env.agent.dyn.robot.target_margin().values()) > 0.0:
+                            # if min(env.agent.dyn.robot.target_margin().values()) > -0.1:
                             #     u = torch.FloatTensor(np.array([
                             #         0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2
                             #     ]) - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)

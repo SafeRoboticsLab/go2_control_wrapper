@@ -33,8 +33,17 @@ class SafetyEnforcer:
         # training_dir = "train_result/test_go2/test_isaacs_centerSampling_withContact"
         # load_dict = {"ctrl": 7_400_000, "dstb": 7_500_000}
 
-        training_dir = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx"
-        load_dict = {"ctrl": 7_200_000, "dstb": 8_000_001}
+        # training_dir = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx"
+        # load_dict = {"ctrl": 7_200_000, "dstb": 8_000_001}
+
+        # SMART
+        # alternate
+        # training_dir = "train_result/smart/go2_isaacs"
+        # load_dict = {"ctrl": 2_100_000, "dstb": 2_100_000}
+
+        # tgda
+        training_dir = "train_result/smart/go2_tgda"
+        load_dict = {"ctrl": 1_600_000, "dstb": 1_600_000}
 
         model_path = os.path.join(parent_dir, training_dir, "model")
         model_config_path = os.path.join(parent_dir, training_dir,
