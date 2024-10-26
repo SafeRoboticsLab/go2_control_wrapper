@@ -187,6 +187,6 @@ update:
 
 eval:
   MODEL_TYPE: [manual, manual] # [ctrl, dstb], highest, safest, worst, manual
-  STEP: [1_600_000, 1_600_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  STEP: [1_900_000, 1_700_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   EVAL_TIMEOUT: 1000 # how long do we evaluate in real rollout env
   IMAGINARY_HORIZON: 500 # the horizon of the imaginary env

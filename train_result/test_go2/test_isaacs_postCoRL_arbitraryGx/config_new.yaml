@@ -10,7 +10,7 @@ agent:
   verbose: false
   gui: false
   gui_imaginary: false
-  dt: 0.01
+  dt: 0.02
   apply_force: true # warning, currently this will also affect adversarial force
   replace_adv_with_dr: false # if true, this will replace the adversarial force with dr force
   force: 50
@@ -28,18 +28,18 @@ agent:
   envtype: normal
   action_range: 
     ctrl: &ctrl_range
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
     dstb: &dstb_range
       - [-1., 1.]
       - [-1., 1.]

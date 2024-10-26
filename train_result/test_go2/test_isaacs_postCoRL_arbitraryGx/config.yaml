@@ -20,18 +20,18 @@ arch:
     - 128
     - 128
   ACTION_RANGE: # Maximum speed: hip and abduction motors at 360 rpm, and knee motor at 245 rpm
-    - [ [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2],
-        [-0.2, 0.2]
+    - [ [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5]
       ]
     - [ [-1., 1.],
         [-1., 1.],
@@ -74,18 +74,18 @@ solver:
   NUM_ENVS: 1
   WARMUP_ACTION_RANGE:
     CTRL: 
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
     DSTB:
       - [-1., 1.]
       - [-1., 1.]
@@ -107,7 +107,7 @@ agent:
   VERBOSE: False
   GUI: False
   GUI_IMAGINARY: False
-  DT: 0.01 # used to be 0.008
+  DT: 0.02 # used to be 0.008
   APPLY_FORCE: True # warning, currently this will also affect adversarial force
   REPLACE_ADV_WITH_DR: False # If True, this will replace the adversarial force with DR force
   FORCE: 5
@@ -125,18 +125,18 @@ agent:
   ENVTYPE: normal
   ACTION_RANGE:
     CTRL:
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
-      - [-0.2, 0.2]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
     DSTB:
       - [-1., 1.]
       - [-1., 1.]
@@ -187,6 +187,6 @@ update:
 
 eval:
   MODEL_TYPE: [manual, manual] # [ctrl, dstb], highest, safest, worst, manual
-  STEP: [6_800_000, 6_900_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  STEP: [100_000, 100_000] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   EVAL_TIMEOUT: 1000 # how long do we evaluate in real rollout env
   IMAGINARY_HORIZON: 500 # the horizon of the imaginary env

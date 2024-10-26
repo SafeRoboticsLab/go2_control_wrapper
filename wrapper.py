@@ -35,23 +35,35 @@ class Wrapper:
         self.cmd.motor_cmd[i].kd = 0
         self.cmd.motor_cmd[i].tau = 0
     
-    self.kp = [60.0] * 12
-    self.kd = [5.0] * 12
+    # self.kp = [60.0] * 12
+    # self.kd = [5.0] * 12
+    self.kp = [50.0] * 12
+    self.kd = [3.0] * 12
     self.order = ["FR", "FL", "BR", "BL"] # actual output of Go2, DO NOT EDIT
 
     self.state = [0] * 36 # x_dot, y_dot, z_dot, roll, pitch, w_x, w_y, w_z, joint_pos x 12, joint_vel x 12
     
     self.msgs = []
+    self.last_time = None
   
   def LowStateHandler(self, msg: LowState_):
+    if self.last_time is None:
+      self.last_time = time.time()
+
     # calculating v
     self.msgs.append(msg)
 
-    if len(self.msgs) > 20:
-      while len(self.msgs) > 20:
+    if len(self.msgs) > 10: # 20
+      while len(self.msgs) > 10: # 20
         self.msgs.pop(0)
     
-    v = integrate_velocity(self.msgs)
+    # extrapolate for v
+    # v = integrate_velocity(self.msgs)
+    
+    # use a dummy way to calculate v
+    accelerometer = np.array(msg.imu_state.accelerometer)
+    v = accelerometer * (time.time() - self.last_time)
+    self.last_time = time.time()
 
     joint_pos = [msg.motor_state[i].q for i in range(12)]
     joint_vel = [msg.motor_state[i].dq for i in range(12)]
@@ -61,7 +73,7 @@ class Wrapper:
     rpy = msg.imu_state.rpy
 
     # map this to sim_order: ["FL", "BL", "FR", "BR"]
-    contact = [1 if x > 10 else 0 for x in msg.foot_force]
+    contact = [1 if x > 8 else 0 for x in msg.foot_force]
     foot_force = [contact[2], contact[0], contact[3], contact[1]]
     self.state = list(tuple(v) + tuple(rpy[:2]) + tuple(gyroscope) + tuple(joint_pos) + tuple(joint_vel) + tuple(foot_force))
 
