@@ -1,0 +1,192 @@
+# sample_naive
+arch:
+  CRITIC_HAS_ACT_IND: False
+  ACTIVATION:
+    actor: Sin
+    critic: Sin
+  APPEND_DIM: 0
+  LATENT_DIM: 0
+  DIM_LIST:
+    actor_0:
+    - 256
+    - 256
+    - 256
+    actor_1:
+    - 256
+    - 256
+    - 256
+    critic:  #! neurons for hidden layers
+    - 128
+    - 128
+    - 128
+  ACTION_RANGE: # Maximum speed: hip and abduction motors at 360 rpm, and knee motor at 245 rpm
+    - [ [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5],
+        [-0.5, 0.5]
+      ]
+    - [ [-1., 1.],
+        [-1., 1.],
+        [-1., 1.],
+        [-0.15, 0.15],
+        [-0.04, 0.04],
+        [-0.05, 0.05],
+      ]
+  ACTION_DIM: [12, 6]  # the number of joints
+  OBS_DIM: 
+    actor_0: 36
+    actor_1: 36
+    critic: 36
+
+environment:
+  SEED: 0
+  NUM_AGENTS: 2
+  TIMEOUT: 500
+  END_CRITERION: failure
+
+solver:
+  USE_WANDB: True
+  PROJECT_NAME: spirit-rl-pybullet
+  NAME: go2_corldemo_tgda
+  OUT_FOLDER: train_result/test_go2/go2_corldemo_tgda
+  CHECK_OPT_FREQ: 20
+  SAVE_TOP_K: [50, 5]
+  # train
+  NUM_CPUS: 1
+  MAX_STEPS: 8_000_000
+  MEMORY_CAPACITY: 1_000_000
+  MIN_STEPS_B4_OPT: 100_000
+  OPTIMIZE_FREQ: 10_000
+  UPDATE_PER_OPT: [2_000, 1_000]
+  CTRL_OPT_FREQ: 10
+  MIN_STEPS_B4_EXPLOIT: 0 # set to 0 because we have pretrained models
+  # eval
+  NUM_EVAL_TRAJ: 20
+  EVAL_TIMEOUT: 500
+  NUM_ENVS: 1
+  WARMUP_ACTION_RANGE:
+    CTRL: 
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+    DSTB:
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-0.15, 0.15]
+      - [-0.04, 0.04]
+      - [-0.05, 0.05]
+  ROLLOUT_END_CRITERION: reach-avoid
+  VENV_DEVICE: cpu
+  HISTORY_WEIGHT: 0.
+  DSTB_SAMPLE_TYPE: softmax  # recent: uses the newest one; strongest: uses the strongest history
+  INIT_DSTB_SAMPLE_TYPE: strongest
+  DSTB_SAMPLE_CUR_WEIGHT: 0.2  # only useful for "softmax", how many weights for the recent, and the history shares (1-weight)
+  CHECK_NOM: False
+
+agent:
+  DYN: SpiritPybullet
+  FOOTPRINT: None
+  VERBOSE: False
+  GUI: False
+  GUI_IMAGINARY: False
+  DT: 0.01 # used to be 0.008
+  APPLY_FORCE: True # warning, currently this will also affect adversarial force
+  REPLACE_ADV_WITH_DR: False # If True, this will replace the adversarial force with DR force
+  FORCE: 5
+  FORCE_SCALE: 1.0 # scale the FORCE variable without affecting the folder name
+  FORCE_RESET_TIME: 200
+  FORCE_INFO:
+  LINK_NAME: 
+  ROTATE_RESET: True
+  HEIGHT_RESET: both # drop (drop from air), stand (stand from ground), both
+  FORCE_RANDOM: True
+  TERRAIN: normal
+  TERRAIN_HEIGHT: 0.1
+  TERRAIN_GRIDSIZE: 0.2 # legacy value 0.2
+  TERRAIN_FRICTION: 1.0
+  ENVTYPE: normal
+  ACTION_RANGE:
+    CTRL:
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+    DSTB:
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-0.15, 0.15]
+      - [-0.04, 0.04]
+      - [-0.05, 0.05]
+  NUM_SEGMENT: 1 # not use, dummy info for Agent class
+  AGENT_ID: ego
+  PRETRAIN_CTRL: 
+  PRETRAIN_DSTB: 
+  RESET_CRITERION: failure
+
+update:
+  MAX_MODEL: 50
+  ALPHA: [0.1, 0.1]
+  LEARN_ALPHA: True
+  BATCH_SIZE: 256
+  DEVICE: cpu
+  OPT_TYPE: AdamW
+  GAMMA: 0.9
+  GAMMA_DECAY: 0.1
+  GAMMA_END: 0.999
+  GAMMA_PERIOD: 1_000_000
+  GAMMA_SCHEDULE: True
+  LATENT_DIM: 0
+  LR_A: 0.0001
+  LR_C: 0.0001
+  LR_Al: [0.000125, 0.0000125]
+  LR_A_END: 0.0001
+  LR_C_END: 0.0001
+  LR_Al_END: 0.00005
+  LR_A_PERIOD: 50000
+  LR_C_PERIOD: 50000
+  LR_Al_PERIOD: 100000
+  LR_A_DECAY: 0.9
+  LR_C_DECAY: 0.9
+  LR_Al_DECAY: 0.9
+  LR_A_SCHEDULE: False
+  LR_C_SCHEDULE: False
+  LR_Al_SCHEDULE: False
+  MODE: reach-avoid
+  TAU: 0.01
+  TERMINAL_TYPE: max
+  EVAL: False
+  UPDATE_PERIOD: [2, 2] # of the actor
+  ACTOR_TYPE: [min, max]
+
+eval:
+  MODEL_TYPE: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
+  STEP: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  EVAL_TIMEOUT: 1000 # how long do we evaluate in real rollout env
+  IMAGINARY_HORIZON: 500 # the horizon of the imaginary env

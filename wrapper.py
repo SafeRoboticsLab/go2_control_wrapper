@@ -53,11 +53,11 @@ class Wrapper:
     # calculating v
     self.msgs.append(msg)
 
-    if len(self.msgs) > 10: # 20
-      while len(self.msgs) > 10: # 20
+    if len(self.msgs) > 20: # 20
+      while len(self.msgs) > 20: # 20
         self.msgs.pop(0)
     
-    # extrapolate for v
+    # extrapolate for v, will slow things down drastically
     # v = integrate_velocity(self.msgs)
     
     # use a dummy way to calculate v
@@ -73,7 +73,7 @@ class Wrapper:
     rpy = msg.imu_state.rpy
 
     # map this to sim_order: ["FL", "BL", "FR", "BR"]
-    contact = [1 if x > 8 else 0 for x in msg.foot_force]
+    contact = [1 if x > 10 else 0 for x in msg.foot_force]
     foot_force = [contact[2], contact[0], contact[3], contact[1]]
     self.state = list(tuple(v) + tuple(rpy[:2]) + tuple(gyroscope) + tuple(joint_pos) + tuple(joint_vel) + tuple(foot_force))
 

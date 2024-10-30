@@ -8,4 +8,4 @@ from wrapper import Wrapper
 wrapper = Wrapper()
 
 while True:
-  print(wrapper.state)
+  print(wrapper.state[32:])

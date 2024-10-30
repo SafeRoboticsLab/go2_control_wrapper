@@ -37,8 +37,22 @@ class SafetyEnforcer:
         # load_dict = {"ctrl": 7_200_000, "dstb": 8_000_001}
         # load_dict = {"ctrl": 100_000, "dstb": 100_000}
 
-        training_dir = "train_result/test_go2/go2_corldemo_pretrained"
-        load_dict = {"ctrl": 7_000_000, "dstb": 12_000_001}
+        # training_dir = "train_result/test_go2/go2_corldemo_pretrained"
+        # load_dict = {"ctrl": 12_000_001, "dstb": 12_000_001}
+
+        # training_dir = "train_result/test_go2/go2_corldemo_2"
+        # load_dict = {"ctrl": 12_000_001, "dstb": 12_000_001}
+
+        # training_dir = "train_result/test_go2/go2_corldemo_tgda_richURDF"
+        # load_dict = {"ctrl": 6_100_000, "dstb": 8_000_001}
+
+        # training_dir = "train_result/test_go2/go2_corldemo_tgda"
+        # # load_dict = {"ctrl": 8_000_001, "dstb": 8_000_001}
+        # load_dict = {"ctrl": 6_500_000, "dstb": 8_000_001}
+
+        training_dir = "train_result/test_go2/go2_corldemo_tgda_richURDF_1"
+        # load_dict = {"ctrl": 2_800_000, "dstb": 5_500_000}
+        load_dict = {"ctrl": 7_000_000, "dstb": 8_600_000}
 
         # SMART
         # alternate
@@ -131,6 +145,14 @@ class SafetyEnforcer:
         # state = np.concatenate((state[3:8], state[9:]), axis=0)
         assert len(state) == 36
         return {"roll": 0.2 - abs(state[3]), "pitch": 0.2 - abs(state[4])}
+        # return {
+        #     "body_ang_x": 0.17444 - abs(state[5]),
+        #     "body_ang_y": 0.17444 - abs(state[6]),
+        #     "body_ang_z": 0.17444 - abs(state[7]),
+        #     "x_dot": 0.2 - abs(state[0]),
+        #     "y_dot": 0.2 - abs(state[1]),
+        #     "z_dot": 0.2 - abs(state[2])
+        # }
 
     def get_safety_action(self, state, target=True, threshold=0.0):
         assert len(state) == 36

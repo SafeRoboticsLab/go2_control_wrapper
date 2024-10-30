@@ -1,0 +1,209 @@
+environment:
+  seed: 0
+  timeout: 500
+  end_criterion: failure
+
+agent:
+  agent_id: ego
+  dyn: Go2Pybullet
+  footprint: none
+  verbose: false
+  gui: false
+  gui_imaginary: false
+  dt: 0.02
+  apply_force: true # warning, currently this will also affect adversarial force
+  replace_adv_with_dr: false # if true, this will replace the adversarial force with dr force
+  force: 75
+  force_scale: 1.0
+  force_reset_time: 50
+  force_info:
+  link_name: 
+  rotate_reset: true
+  height_reset: both
+  force_type: uniform
+  terrain: normal
+  terrain_height: 0.1
+  terrain_gridsize: 0.2
+  terrain_friction: 1.0
+  envtype: normal
+  action_range: 
+    ctrl: &ctrl_range
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+    dstb: &dstb_range
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-0.15, 0.15]
+      - [-0.04, 0.04]
+      - [-0.05, 0.05]
+  action_type: increment
+  action_center:
+  target_margin:
+    - corner_height
+    - elbow_height
+    - toe_height
+    - body_ang_x
+    - body_ang_y
+    - body_ang_z
+    - x_dot
+    - y_dot
+    - z_dot
+  safety_margin:
+    - corner_height
+    - elbow_height
+  obs_dim: 36
+  obsrv_list: &obsrv_list
+    ctrl: null
+    dstb: null
+  reset_criterion: failure
+
+solver:
+  device: cpu
+  rollout_env_device: cpu
+  num_envs: 1
+  num_actors: 2
+  num_critics: 1
+  # == hyperparameters of learning ==
+  max_steps: 12_000_000
+  opt_period: 10_000
+  num_updates_per_opt: 1_000
+  eval_period: 100_000
+  min_steps_b4_opt: 100_000
+  warmup_steps: 500_000
+  batch_size: 256
+  ctrl_update_ratio: 1
+  warmup_action_range:
+    ctrl: *ctrl_range
+    dstb: *dstb_range
+  memory_capacity: 1_000_000
+  softmax_rationality: 3.0
+  # == logging ==
+  use_wandb: true
+  project_name: spirit-rl-pybullet
+  name: go2_corldemo_tgda_richURDF
+  max_model: 20
+  save_top_k:
+    ctrl: 10
+    dstb: 10
+  out_folder: train_result/test_go2/go2_corldemo_tgda_richURDF_1
+  eval:   
+    b4_learn: true
+    metric: reach-avoid
+    aux_metric: [ep_length, safety]
+    num_trajectories: 100
+    timeout: 500
+    end_criterion: reach-avoid
+  obs_dim: 36
+  obsrv_list:  *obsrv_list
+  rollout_end_criterion: reach-avoid
+  # == hyperparameters of actors and critics ==
+  critic_0:
+    eval: false
+    net_name: central
+    lr: 0.0001
+    lr_schedule: false
+    lr_end: 0.0001
+    lr_period: 50000
+    lr_decay: 0.9
+    gamma: 0.9
+    gamma_decay: 0.1
+    gamma_end: 0.999
+    gamma_period: 2_000_000
+    gamma_schedule: true
+    tau: 0.01
+    mode: reach-avoid
+    terminal_type: all  # use min{l_x, g_x} for terminal states/obsrvs.
+    opt_type: AdamW
+    update_target_period: 1
+  actor_0:
+    eval: false
+    net_name: ctrl
+    actor_type: max
+    learn_alpha: true
+    lr: 0.0001
+    lr_al: 0.0001
+    lr_schedule: false
+    lr_al_schedule: true
+    alpha: 0.1
+    min_alpha: 0.001
+    opt_type: AdamW
+    update_period: 1
+    lr_end: 0.0001
+    lr_al_end: 0.0000001
+    lr_period: 50000
+    lr_al_period: 100000
+    lr_decay: 0.9    
+    lr_al_decay: 0.9
+  actor_1:
+    eval: false
+    net_name: dstb
+    actor_type: min
+    learn_alpha: true
+    lr: 0.0005
+    lr_al: 0.0001
+    lr_schedule: false
+    lr_al_schedule: true
+    alpha: 0.1
+    min_alpha: 0.001
+    opt_type: AdamW
+    update_period: 1
+    lr_end: 0.0001
+    lr_al_end: 0.0000001
+    lr_period: 50000
+    lr_al_period: 100000
+    lr_decay: 0.9    
+    lr_al_decay: 0.9
+
+arch:
+  actor_0:
+    mlp_dim:
+      - 256
+      - 256
+      - 256
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: 36
+    action_dim: 12
+    action_range: *ctrl_range
+    pretrained_path:
+  actor_1:
+    mlp_dim:
+      - 256
+      - 256
+      - 256
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: 36
+    action_dim: 6
+    action_range: *dstb_range
+    pretrained_path:
+  critic_0:
+    mlp_dim:
+      - 128
+      - 128
+      - 128
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: 36
+    action_dim: 18
+    pretrained_path:
+
+eval:
+  model_type: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
+  step: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  eval_timeout: 1000 # how long do we evaluate in real rollout env
+  imaginary_horizon: 300 # the horizon of the imaginary env

@@ -27,6 +27,10 @@ stable_stance = [
     0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2
 ]
 
+# stable_stance = [
+#     0.2, 0.7, -1.5, 0.5, 0.5, -1.5, -0.2, 0.7, -1.5, -0.5, 0.5, -1.5
+# ]
+
 # put the robot in sitting stance
 wrapper.update(sit)
 

@@ -20,7 +20,8 @@ def transition(cur, new):
 
 wrapper = Wrapper()
 
-stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8]
+# stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8]
+stand = [0.1, 0.9, -1.9, -0.1, 0.9, -1.9, 0.1, 0.9, -1.9, -0.1, 0.9, -1.9]
 sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5, -2.5]
 
 # put the robot in sitting stance
@@ -57,8 +58,8 @@ def get_state(state, command=[0, 0, 0]):
     tuple(state[5:8]) +
     tuple(projected_gravity) + 
     tuple(command) +
-    tuple(wrapper.map(state[8:20], wrapper.order, sim_order)) +
-    tuple(wrapper.map(state[20:32], wrapper.order, sim_order))
+    tuple(wrapper.map(state[8:20], wrapper.order, sim_order)) + # map from physical to pybullet
+    tuple(wrapper.map(state[20:32], wrapper.order, sim_order)) # map from physical to pybullet
   )
   return torch.Tensor(obs)
 
@@ -66,33 +67,52 @@ controller = Go2RLController()
 sim_order = ["FL", "BL", "FR", "BR"]
 command = [0., 0., 0.0]
 
+dt = 0.005
 command_time = time.time()
+decimation_time = time.time()
 
 try:
   while True:
-    if time.time() - command_time > 2.0:
-      # command[0] = min(command[0] + 0.01, 0.5)
-      # command = [0.5, 0., 0.0]
-      command = [0.5, 0, 1.0]
-      # command_time = time.time()
-    elif time.time() - command_time > 4.0:
-      # command[0] = max(command[0] - 0.01, 0.0)
+    if time.time() - command_time > 7.0:
       command = [0, 0, 0]
-
-    state = get_state(wrapper.state, command=command)
-    action = controller.get_action(state) # reference pos
-    # constraint joint incremental
-    # action = np.clip(np.array(wrapper.map(action, sim_order, wrapper.order)) - np.array(wrapper.state[8:20]), -np.ones(12) * 0.5, np.ones(12) * 0.5) + np.array(wrapper.state[8:20])
-    action = wrapper.map(action, sim_order, wrapper.order)
-    wrapper.update(action)
+      # wrapper.update([0.2, 0.7, -1.5, 0.5, 0.5, -1.5, -0.2, 0.7, -1.5, -0.5, 0.5, -1.5], input_order=sim_order)
+      state = get_state(wrapper.state, command=command)
+      action = controller.get_action(state) # reference pos
+      # constraint joint incremental
+      # action = np.clip(np.array(wrapper.map(action, sim_order, wrapper.order)) - np.array(wrapper.state[8:20]), -np.ones(12) * 0.5, np.ones(12) * 0.5) + np.array(wrapper.state[8:20])  
+      action = wrapper.map(action, sim_order, wrapper.order)
+      
+      wrapper.update(action)
+    elif time.time() - command_time > 2.0:
+      # command = [0.5, 0., 0.0]
+      # command = [0.85, 0.15, -0.16]
+      command = [0.4, 0.0, -0.15]
+      
+      if time.time() - decimation_time > dt * 4:
+        state = get_state(wrapper.state, command=command)
+        action = controller.get_action(state) # reference pos
+        decimation_time = time.time()
+        # constraint joint incremental
+        # action = np.clip(np.array(wrapper.map(action, sim_order, wrapper.order)) - np.array(wrapper.state[8:20]), -np.ones(12) * 0.5, np.ones(12) * 0.5) + np.array(wrapper.state[8:20])
+        action = wrapper.map(action, sim_order, wrapper.order)
+      
+      wrapper.update(action)
+    else:
+      command = [0, 0, 0]
+      state = get_state(wrapper.state, command=command)
+      action = controller.get_action(state) # reference pos
+      action = wrapper.map(action, sim_order, wrapper.order)
+      wrapper.update(action)
 
 except KeyboardInterrupt:
-  transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  # transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  transition(action, stand)
   transition(stand, sit)
 
 except Exception as e:
   print(e)
-  transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  # transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  transition(action, stand)
   transition(stand, sit)
 
 print("lock in SIT mode, keyboard interrupt to stop")

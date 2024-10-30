@@ -58,7 +58,7 @@ class Go2RLController():
 
     def __init__(self, device='cpu'):
         self.device = device
-        log_root = "/home/unitree/Desktop/DUY/go2_control_wrapper/train_result/controller_go2_1"
+        log_root = "/home/unitree/Desktop/DUY/go2_control_wrapper/train_result/controller_go2_5"
 
         train_cfg = GO2RoughCfgPPO()
         env_cfg = GO2RoughCfg()
@@ -69,8 +69,10 @@ class Go2RLController():
         self.clip_obs = env_cfg.normalization.clip_observations
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=device, requires_grad=False,)
         self.clip_actions = env_cfg.normalization.clip_actions
-        # self.default_dof_pos = torch.tensor([0.1,  0.8, -1.5, -0.1,  0.8, -1.5,  0.1,  1.0, -1.5, -0.1,  1.0, -1.5], device=device)
-        self.default_dof_pos = torch.tensor([0.1, 0.75, -1.8, -0.1, 0.75, -1.8, 0.1, 0.75, -1.8, -0.1, 0.75, -1.8], device=device)
+        # self.clip_actions = 10.0 # safety reasons
+        self.default_dof_pos = torch.tensor([0.1,  0.8, -1.5, -0.1,  0.8, -1.5,  0.1,  1.0, -1.5, -0.1,  1.0, -1.5], device=device)
+        # self.default_dof_pos = torch.tensor([0.1, 0.75, -1.8, -0.1, 0.75, -1.8, 0.1, 0.75, -1.8, -0.1, 0.75, -1.8], device=device)
+        # self.default_dof_pos = torch.tensor([0.1, 0.9, -1.9, -0.1, 0.9, -1.9, 0.1, 0.9, -1.9, -0.1, 0.9, -1.9], device=device)
         self.action_scale = env_cfg.control.action_scale
 
         train_cfg_dict = class_to_dict(train_cfg)
