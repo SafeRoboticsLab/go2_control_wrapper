@@ -5,6 +5,7 @@ import copy
 from omegaconf import OmegaConf
 from agent import ISAACS
 from inverse_kinematics.inverse_kinematics_controller import InverseKinematicsController
+from rl_controller.rl_controller import Go2RLController
 from safe_adaptation_dev.simulators import SpiritPybulletZeroSumEnv, Go2PybulletZeroSumEnv
 from utils.utils import get_model_index
 import pybullet as p
@@ -12,6 +13,27 @@ import time
 import numpy as np
 import torch
 import json
+from scipy.spatial.transform import Rotation
+
+def get_state(env, command=[0, 0, 0]):
+    # 36D, excluding previous action
+    pos, ang = p.getBasePositionAndOrientation(env.agent.dyn.robot.id, physicsClientId=env.agent.dyn.robot.client)
+    rotmat = Rotation.from_quat(ang).as_matrix()
+    # ang = p.getEulerFromQuaternion(ang, physicsClientId=robot.client)
+    linear_vel, angular_vel = p.getBaseVelocity(env.agent.dyn.robot.id, physicsClientId=env.agent.dyn.robot.client)
+    robot_body_linear_vel =  (np.linalg.inv(rotmat) @ np.array(linear_vel).T)
+    robot_body_angular_vel = (np.linalg.inv(rotmat) @ np.array(angular_vel).T)
+    joint_pos, joint_vel, joint_force, joint_torque = env.agent.dyn.robot.get_joint_state()
+    projected_gravity = (np.linalg.inv(rotmat) @ np.array([0, 0, -1]).T)
+    obs = (
+        tuple(robot_body_linear_vel) + 
+        tuple(robot_body_angular_vel) +
+        tuple(projected_gravity) + 
+        tuple(command) +
+        tuple(joint_pos) +
+        tuple(joint_vel)
+    )
+    return torch.Tensor(obs)
 
 HOST = '192.168.0.248'  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
@@ -25,7 +47,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print('Connected by', addr)
 
         # config_file = "train_result/test_go2/test_isaacs_centerSampling_withContact/config_new.yaml"
-        config_file = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx/config_new.yaml"
+        # config_file = "train_result/test_go2/test_isaacs_postCoRL_arbitraryGx/config_new.yaml"
+        config_file = "train_result/test_go2/go2_corldemo_tgda_richURDF_1/config_new.yaml"
 
         # Loads config.
         cfg = OmegaConf.load(config_file)
@@ -83,16 +106,18 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         prev_done = True
         L_horizon = 10
         horizon = 100
-        controller = InverseKinematicsController(Xdist=0.387,
-                                                 Ydist=0.284,
-                                                 height=0.25,
-                                                 coxa=0.03,
-                                                 femur=0.2,
-                                                 tibia=0.2,
-                                                 L=2.0,
-                                                 angle=0,
-                                                 T=0.4,
-                                                 dt=0.02)
+        # controller = InverseKinematicsController(Xdist=0.387,
+        #                                          Ydist=0.284,
+        #                                          height=0.25,
+        #                                          coxa=0.03,
+        #                                          femur=0.2,
+        #                                          tibia=0.2,
+        #                                          L=2.0,
+        #                                          angle=0,
+        #                                          T=0.4,
+        #                                          dt=0.02)
+        controller = Go2RLController()
+        command = [0.4, 0.0, -0.15]
 
         while True:
             data = conn.recv(1024)
@@ -124,15 +149,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             u = solver.ctrl.net(s.float().to(solver.device))
                         else:
                             # prev gameplay is successful, run task
-                            new_joint_pos = controller.get_action(
-                                joint_order=["FL", "BL", "FR", "BR"],
-                                offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                            # task policy
+                            # new_joint_pos = controller.get_action(
+                            #     joint_order=["FL", "BL", "FR", "BR"],
+                            #     offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                            
+                            # rl controller
+                            new_joint_pos = controller.get_action(get_state(env, command=command))
+
                             u = torch.FloatTensor(new_joint_pos - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)
                     elif counter // L_horizon == 1:
                         # candidate - task policy
-                        new_joint_pos = controller.get_action(
-                            joint_order=["FL", "BL", "FR", "BR"],
-                            offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                        # new_joint_pos = controller.get_action(
+                        #     joint_order=["FL", "BL", "FR", "BR"],
+                        #     offset=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                        new_joint_pos = controller.get_action(get_state(env, command=command))
                         u = torch.FloatTensor(new_joint_pos - np.array(env.agent.dyn.robot.get_joint_position())).to(solver.device)
                     else:
                         # back to shielding

@@ -58,7 +58,7 @@ class Go2RLController():
 
     def __init__(self, device='cpu'):
         self.device = device
-        log_root = "/home/unitree/Desktop/DUY/go2_control_wrapper/train_result/controller_go2_5"
+        log_root = "/home/buzi/Desktop/Princeton/RESEARCH/SAFE/HARDWARE/GO2/go2_control_wrapper/train_result/controller_go2_5"
 
         train_cfg = GO2RoughCfgPPO()
         env_cfg = GO2RoughCfg()

@@ -13,7 +13,7 @@ agent:
   dt: 0.02
   apply_force: true # warning, currently this will also affect adversarial force
   replace_adv_with_dr: false # if true, this will replace the adversarial force with dr force
-  force: 75
+  force: 50
   force_scale: 1.0
   force_reset_time: 50
   force_info:
@@ -53,12 +53,12 @@ agent:
     - corner_height
     - elbow_height
     - toe_height
-    - body_ang_x
-    - body_ang_y
-    - body_ang_z
-    - x_dot
-    - y_dot
-    - z_dot
+    # - body_ang_x
+    # - body_ang_y
+    # - body_ang_z
+    # - x_dot
+    # - y_dot
+    # - z_dot
   safety_margin:
     - corner_height
     - elbow_height
@@ -203,7 +203,7 @@ arch:
     pretrained_path:
 
 eval:
-  model_type: [highest, highest] # [ctrl, dstb], highest, safest, worst, manual
-  step: [0, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
+  model_type: [manual, highest] # [ctrl, dstb], highest, safest, worst, manual
+  step: [7_000_000, 0] # [ctrl, dstb], the step to use if "manual" is chosen for MODEL_TYPE
   eval_timeout: 1000 # how long do we evaluate in real rollout env
   imaginary_horizon: 300 # the horizon of the imaginary env
