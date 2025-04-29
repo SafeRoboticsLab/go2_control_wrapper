@@ -114,7 +114,7 @@ class BaseMASAC(ABC):
       self.log_alpha = [
           log_alp.detach().clone() for log_alp in self.init_alpha
       ]
-      self.target_entropy = -torch.tensor(self.action_dim).to(self.device)
+      self.target_entropy = -torch.tensor(self.action_dim, dtype=torch.float32).to(self.device)
       if self.LEARN_ALPHA:
         for log_alp in self.log_alpha:
           log_alp.requires_grad = True

@@ -67,7 +67,10 @@ def get_state(state, command=[0, 0, 0]):
 #                                          T=0.4,
 #                                          dt=0.02)
 controller = Go2RLController()
-command = [0.4, 0.0, -0.15]
+# command = [0.2, 0.2, -0.15]
+command = [0.3, 0.1, -0.15]
+# command = [0.0, 0.4, -0.15] # left
+# command = [-0.4, 0.0, -0.15] # backward
 
 g_x = np.inf
 l_x = np.inf
@@ -92,7 +95,7 @@ wrapper.update(sit)
 transition(sit, stand)
 
 # SETUP COMMAND RECEIVING SERVER
-HOST = "192.168.0.248"
+HOST = "192.168.0.102"
 PORT = 65432
 
 isConnected = False
@@ -114,15 +117,17 @@ s.setblocking(0)
 cur_time = time.time()
 dt = 0.005
 
-for i in range(100):
-    joint_pos_sim = wrapper.map(wrapper.state[8:20], wrapper.order, sim_order)
-    joint_vel_sim = wrapper.map(wrapper.state[20:32], wrapper.order, sim_order)
-    state = wrapper.state[:8] + joint_pos_sim + joint_vel_sim + wrapper.state[32:] # this is now sim state
-    sim_state = get_state(wrapper.state, command=[0, 0, 0])
-    wrapper.update(controller.get_action(sim_state), input_order=sim_order) # mark that action is sim_order
+joint_pos_sim = wrapper.map(wrapper.state[8:20], wrapper.order, sim_order)
+joint_vel_sim = wrapper.map(wrapper.state[20:32], wrapper.order, sim_order)
+state = wrapper.state[:8] + joint_pos_sim + joint_vel_sim + wrapper.state[32:] # this is now sim state
+sim_state = get_state(wrapper.state, command=command)
+transition(stand, wrapper.map(controller.get_action(sim_state), sim_order, wrapper.order))
+
+end_time = time.time()
+error_flag = False
 
 try:
-    while isConnected:
+    while isConnected or time.time() - end_time < 15.0:
         if time.time() - cur_time > dt:
             #! WARNING: the joint pos and vel in wrapper.state is of real Go2, NOT sim
             joint_pos_sim = wrapper.map(wrapper.state[8:20], wrapper.order, sim_order)
@@ -130,14 +135,18 @@ try:
             state = wrapper.state[:8] + joint_pos_sim + joint_vel_sim + wrapper.state[32:] # this is now sim state
             
             if g_x < 0 or l_x < 0:
+            # if g_x < 0 or l_x < -0.03:
+            # if g_x < 0:
                 safetyEnforcer.is_shielded = True
                 # switch between fallback and target stable stance, depending on the current state
-                stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
+                # stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
+                stable_stance = np.array([0.4, 0.7, -1.5, 0.5, 0.7, -1.2, -0.4, 0.7, -1.5, -0.7, 0.7, -1.2]) # sim order
                 margin = safetyEnforcer.target_margin(state)
                 lx = min(margin.values())
 
-                if lx > 0.01: # -0.1
-                    action = stable_stance
+                # if lx > 0.0: # -0.1
+                if lx > -0.05:
+                    action = action + np.clip(stable_stance - action, -0.1* np.ones(12), 0.1 * np.ones(12))
                 else:
                     # center_sampling
                     # action = safetyEnforcer.ctrl(np.array(state)) + np.array([0.2, 0.6, -1.5, 0.2, 0.6, -1.5, -0.2, 0.6, -1.5, -0.2, 0.6, -1.5])  # sim order
@@ -165,7 +174,8 @@ try:
                         g_x = data["g_x"]
                         l_x = data["l_x"]
                         if g_x < 0 or l_x < 0:
-                            stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
+                            # stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2])  # sim order
+                            stable_stance = np.array([0.4, 0.7, -1.5, 0.5, 0.7, -1.2, -0.4, 0.7, -1.5, -0.7, 0.7, -1.2]) # sim order
                             margin = safetyEnforcer.target_margin(state)
                             lx = min(margin.values())
 
@@ -182,6 +192,23 @@ try:
                         step = 0
                 step += 1
             cur_time = time.time()
+
+        action = np.array(action)
+        action[[0, 3, 6, 9]] = np.clip(action[[0, 3, 6, 9]], -0.7, 0.7)
+        action[[1, 4, 7, 10]] = np.clip(action[[1, 4, 7, 10]], -1.5, 1.5)
+        action[[2, 5, 8, 11]] = np.clip(action[[2, 5, 8, 11]], -2.7, -0.85)
+
+        for i, j in enumerate(action):
+            if i % 3 == 0 and (j < -0.7 or j > 0.7):
+                print("Error, large values detected")
+                raise ValueError
+            if i % 3 == 1 and (j < -1.5 or j > 1.5):
+                print("Error, large values detected")
+                raise ValueError
+            if i % 3 == 2 and (j < -2.7 or j > -0.85):
+                print("Error, large values detected")
+                raise ValueError
+
         wrapper.update(action, input_order=sim_order)
 
         if abs(wrapper.state[3]) > np.pi*0.4 or abs(wrapper.state[4]) > np.pi*0.4:
@@ -190,9 +217,15 @@ try:
 except KeyboardInterrupt:
     transition(wrapper.map(action, sim_order, wrapper.order), stand)
     transition(stand, sit)
+    error_flag = True
 
 except Exception as e:
     print(e)
+    transition(wrapper.map(action, sim_order, wrapper.order), stand)
+    transition(stand, sit)
+    error_flag = True
+
+if not error_flag:
     transition(wrapper.map(action, sim_order, wrapper.order), stand)
     transition(stand, sit)
 

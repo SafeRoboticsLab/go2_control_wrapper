@@ -58,7 +58,7 @@ class Go2RLController():
 
     def __init__(self, device='cpu'):
         self.device = device
-        log_root = "/home/buzi/Desktop/Princeton/RESEARCH/SAFE/HARDWARE/GO2/go2_control_wrapper/train_result/controller_go2_5"
+        log_root = "/home/unitree/Desktop/DUY/go2_control_wrapper/train_result/controller_go2_5"
 
         train_cfg = GO2RoughCfgPPO()
         env_cfg = GO2RoughCfg()
@@ -93,7 +93,7 @@ class Go2RLController():
         alg.optimizer.load_state_dict(loaded_dict['optimizer_state_dict'])
         
         self.policy = alg.actor_critic.act_inference
-        self.action = torch.tensor(np.zeros(self.num_actions).astype(np.float32))
+        self.action = torch.tensor(np.zeros(self.num_actions), dtype=torch.float32)
 
     def test(self):
         try:

@@ -53,10 +53,12 @@ class SafetyEnforcer:
         training_dir = "train_result/test_go2/go2_corldemo_tgda_richURDF_1"
         # load_dict = {"ctrl": 2_800_000, "dstb": 5_500_000}
         load_dict = {"ctrl": 7_000_000, "dstb": 8_600_000}
+        # load_dict = {"ctrl": 8_800_000, "dstb": 8_600_000}
+        # load_dict = {"ctrl": 10_600_000, "dstb": 12_000_001}
 
         # SMART
         # alternate
-        # training_dir = "train_result/smart/go2_isaacs"
+       # training_dir = "train_result/smart/go2_isaacs"
         # load_dict = {"ctrl": 2_100_000, "dstb": 2_100_000}
 
         # tgda

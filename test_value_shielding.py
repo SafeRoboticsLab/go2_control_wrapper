@@ -80,12 +80,17 @@ stable_stance_switch = True
 # safetyEnforcer = SafetyEnforcer(epsilon=-np.inf)
 
 # NEW CORL DEMO MODELS
-# safetyEnforcer = SafetyEnforcer(epsilon=np.inf) # shield only
-safetyEnforcer = SafetyEnforcer(epsilon=-0.05) # value shielding
-# safetyEnforcer = SafetyEnforcer(epsilon=-np.inf) # task policy only
+
+#safetyEnforcer = SafetyEnforcerBB(epsilon=np.inf) # shield only
+# safetyEnforcer = SafetyEnforcer(epsilon=-0.045) # value shielding
+
+# safetyEnforcer = SafetyEnforcer(epsilon=-0.05) # value shielding
+
+safetyEnforcer = SafetyEnforcer(epsilon=-np.inf) # task policy only
 
 stand = [0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8, 0, 0.75, -1.8] # following real order
 sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5, -2.5] # following real order
+# stable_stance = np.array([0.4, 0.7, -1.5, 0.5, 0.7, -1.2, -0.4, 0.7, -1.5, -0.7, 0.7, -1.2]) # sim order
 stable_stance = np.array([0.5, 0.7, -1.5, 0.5, 0.7, -1.2, -0.5, 0.7, -1.5, -0.5, 0.7, -1.2]) # sim order
 
 # put the robot in sitting stance
@@ -103,21 +108,27 @@ loop_time = time.time()
 dt = 0.005
 mode = 0
 
+run_time = time.time()
+error_flag = False
+
 try:
-  while True:
+  while time.time() - run_time < 20.0:
     if time.time() - loop_time > dt:
-      if time.time() - command_time > 3.0:
+      if time.time() - command_time > 2.0:
         if mode == 0:
-          command = [0.4, 0.0, -0.15] # forward
+          # command = [0.3, 0.0, -0.15] # forward
+          command = [0.25, 0.0, 0.0] # forward
         elif mode == 1:
-          command = [-0.4, 0.0, -0.15] # backward
+          # command = [-0.4, 0.0, -0.15] # backward
+          # command = [-0.2, 0.0, -0.15] # backward
+          command = [-0.4, 0.0, 0.0] # backward
         elif mode == 2:
           command = [0.3, 0, -0.5] # rotate
         elif mode == 3:
           command = [0.0, 0.4, -0.15] # rotate
         elif mode == 4:
           command = [0.0, -0.4, -0.15] # rotate
-        mode = (mode + 1)%5
+        mode = (mode + 1)%2
         command_time = time.time()
 
       # transition from real state to sim state
@@ -149,15 +160,31 @@ try:
           lx = min(margin.values())
 
           # if lx > -0.1:
-          if lx > 0.01:
+          if lx > -0.05:
               action = stable_stance
       else:
         action = ctrl + joint_pos_sim
       
       loop_time = time.time()
     
-    wrapper.update(action, input_order=sim_order) # mark that action is sim_order
+    action = np.array(action)
+    action[[0, 3, 6, 9]] = np.clip(action[[0, 3, 6, 9]], -0.7, 0.7)
+    action[[1, 4, 7, 10]] = np.clip(action[[1, 4, 7, 10]], -1.5, 1.5)
+    action[[2, 5, 8, 11]] = np.clip(action[[2, 5, 8, 11]], -2.7, -0.85)
+    
+    for i, j in enumerate(action):
+      if i % 3 == 0 and (j < -0.7 or j > 0.7):
+        print("Error, large values detected")
+        raise ValueError
+      if i % 3 == 1 and (j < -1.5 or j > 1.5):
+        print("Error, large values detected")
+        raise ValueError
+      if i % 3 == 2 and (j < -2.7 or j > -0.85):
+        print("Error, large values detected")
+        raise ValueError
+    
     # wrapper.update(stable_stance, input_order=sim_order)
+    wrapper.update(action, input_order=sim_order) # mark that action is sim_order
     # print(safetyEnforcer.prev_q)
 
     if abs(wrapper.state[3]) > np.pi*0.4 or abs(wrapper.state[4]) > np.pi*0.4:
@@ -166,9 +193,15 @@ try:
 except KeyboardInterrupt:
   transition(wrapper.map(action, sim_order, wrapper.order), stand)
   transition(stand, sit)
+  error_flag = True
 
 except Exception as e:
   print(e)
+  transition(wrapper.map(action, sim_order, wrapper.order), stand)
+  transition(stand, sit)
+  error_flag = True
+
+if not error_flag:
   transition(wrapper.map(action, sim_order, wrapper.order), stand)
   transition(stand, sit)
 
