@@ -56,9 +56,12 @@ class SafetyEnforcer:
         # load_dict = {"ctrl": 8_800_000, "dstb": 8_600_000}
         # load_dict = {"ctrl": 10_600_000, "dstb": 12_000_001}
 
+        # training_dir = "train_result/go/"
+        # load_dict = {"ctrl":2_200_000, "dstb":400_000}
+
         # SMART
         # alternate
-       # training_dir = "train_result/smart/go2_isaacs"
+        # training_dir = "train_result/smart/go2_isaacs"
         # load_dict = {"ctrl": 2_100_000, "dstb": 2_100_000}
 
         # tgda

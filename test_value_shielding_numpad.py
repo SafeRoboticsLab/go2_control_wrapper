@@ -40,7 +40,7 @@ sim_order = ["FL", "BL", "FR", "BR"]
 wrapper = Wrapper()
 stable_stance_switch = True
 # safetyEnforcer = SafetyEnforcer(epsilon=np.inf) # shield only
-safetyEnforcer = SafetyEnforcer(epsilon=-0.045) # value shielding
+safetyEnforcer = SafetyEnforcer(epsilon=-0.05) # value shielding
 
 # safetyEnforcer = SafetyEnforcer(epsilon=-0.05) # value shielding
 
