@@ -44,10 +44,11 @@ def main():
     parser.add_argument("--checkpoint", type=str,
                         default="ckpts/mjlab_walk/model_1000.pt",
                         help="Path to MjLab walking policy checkpoint")
-    parser.add_argument("--kp", type=str, default="50,50,100",
-                        help="Per-joint-type kp: hip,thigh,calf (calf stiffer to reduce sag)")
-    parser.add_argument("--kd", type=str, default="3,3,5",
-                        help="Per-joint-type kd: hip,thigh,calf")
+    parser.add_argument("--kp", type=str, default="80,80,180",
+                        help="Per-joint-type kp: hip,thigh,calf (80-pct of training sim stiffness; "
+                             "empirically best for this robot)")
+    parser.add_argument("--kd", type=str, default="1,1,2",
+                        help="Per-joint-type kd: hip,thigh,calf (matches training sim damping)")
     parser.add_argument("--dt", type=float, default=0.02,
                         help="Control loop period in seconds (default: 0.02, i.e. 50Hz)")
     parser.add_argument("--log", type=str, default=None,

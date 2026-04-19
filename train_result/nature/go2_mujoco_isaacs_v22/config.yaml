@@ -1,0 +1,230 @@
+environment:
+  seed: 49
+  timeout: 300
+  end_criterion: failure
+  augment_obs_with_prev_action: true
+  reset_type: stance
+
+agent:
+  agent_id: ego
+  dyn: Go2Mujoco
+  footprint: none
+  verbose: false
+  gui: false
+  frame_skip: 10
+
+  mujoco_kp: [100.0, 100.0, 200.0]
+  mujoco_kd: [1.0, 1.0, 2.0]
+
+  action_smoothing: 0.3
+
+  force: 50
+  force_init: 5
+  force_curriculum_steps: 5_000_000
+  force_scale: 1.0
+  synthetic_symmetrical_dstb: true
+
+  corner_height_threshold: 0.10
+  elbow_height_threshold: 0.05
+
+  obs_projected_gravity: false
+
+  obs_dim_single: &obs_dim_single 36
+  seq_len: &seq_len 1
+
+  action_range:
+    ctrl: &ctrl_range
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+      - [-0.5, 0.5]
+    dstb: &dstb_range
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-1., 1.]
+      - [-0.15, 0.15]
+      - [-0.04, 0.04]
+      - [-0.05, 0.05]
+  action_type: increment
+  action_center:
+  target_margin:
+    - corner_height_upper
+    - corner_height_lower
+    - elbow_height
+    - toe_height
+    - body_ang_x
+    - body_ang_y
+    - body_ang_z
+    - x_dot
+    - y_dot
+    - z_dot
+    - foot_width
+  # Lateral foot spread threshold (metres, body frame).
+  # Home pose ≈ 0.28m, walking center ≈ 0.20m.
+  # margin = lateral_span - threshold → positive when spread enough.
+  foot_width_threshold: 0.25
+
+  safety_margin:
+    - corner_height
+
+  reset_safety_margin:
+    - elbow_height
+
+  reset_g_x_threshold: 0.02
+
+  obs_dim: &obs_dim 48
+  dstb_obsrv_dim: &dstb_obsrv_dim 60
+  obsrv_list: &obsrv_list
+    ctrl: null
+    dstb:
+      - ctrl
+  reset_criterion: failure
+
+solver:
+  device: cpu
+  rollout_env_device: cpu
+  num_envs: 1
+  num_actors: 2
+  num_critics: 1
+  grad_method: original
+  max_steps: 20_000_000
+  opt_period: 20_000
+  num_updates_per_opt: 1_000
+  eval_period: 200_000
+  min_steps_b4_opt: 200_000
+  warmup_steps: 500_000
+  batch_size: 512
+  ctrl_update_ratio: 1
+  warmup_action_range:
+    ctrl: *ctrl_range
+    dstb: *dstb_range
+  memory_capacity: 1_000_000
+  softmax_rationality: 3.0
+  use_wandb: false
+  project_name: nature
+  name: go2_mujoco_isaacs_v22
+  max_model: 20
+  save_top_k:
+    ctrl: 10
+    dstb: 10
+  out_folder: train_result/nature/go2_mujoco_isaacs_v22
+  eval:
+    b4_learn: false
+    metric: reach-avoid
+    aux_metric: [ep_length, safety]
+    num_trajectories: 100
+    timeout: 300
+    end_criterion: reach-avoid
+  obs_dim: *obs_dim
+  obs_dim_single: *obs_dim_single
+  seq_len: *seq_len
+  obsrv_list: *obsrv_list
+  rollout_end_criterion: reach-avoid
+  critic_0:
+    eval: false
+    net_name: central
+    lr: 0.0001
+    lr_schedule: false
+    lr_end: 0.0001
+    lr_period: 50000
+    lr_decay: 0.9
+    gamma: 0.95
+    gamma_decay: 0.1
+    gamma_end: 0.999
+    gamma_period: 5_000_000
+    gamma_schedule: true
+    tau: 0.01
+    mode: reach-avoid
+    terminal_type: all
+    opt_type: AdamW
+    update_target_period: 2
+  actor_0:
+    eval: false
+    net_name: ctrl
+    actor_type: max
+    learn_alpha: true
+    lr: 0.0001
+    lr_al: 0.0005
+    lr_schedule: false
+    lr_al_schedule: false
+    alpha: 0.1
+    min_alpha: 0.01
+    opt_type: AdamW
+    update_period: 2
+    lr_end: 0.0001
+    lr_al_end: 0.00005
+    lr_period: 50000
+    lr_al_period: 100000
+    lr_decay: 0.9
+    lr_al_decay: 0.9
+  actor_1:
+    eval: false
+    net_name: dstb
+    actor_type: min
+    learn_alpha: true
+    lr: 0.0001
+    lr_al: 0.0001
+    lr_schedule: false
+    lr_al_schedule: false
+    alpha: 0.1
+    min_alpha: 0.01
+    opt_type: AdamW
+    update_period: 2
+    lr_end: 0.0001
+    lr_al_end: 0.0000001
+    lr_period: 50000
+    lr_al_period: 100000
+    lr_decay: 0.9
+    lr_al_decay: 0.9
+
+arch:
+  actor_0:
+    mlp_dim:
+      - 512
+      - 512
+      - 512
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: *obs_dim
+    action_dim: 12
+    action_range: *ctrl_range
+    pretrained_path:
+  actor_1:
+    net_type: mlp
+    mlp_dim:
+      - 256
+      - 256
+      - 256
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: *dstb_obsrv_dim
+    action_dim: 6
+    action_range: *dstb_range
+    pretrained_path:
+  critic_0:
+    mlp_dim:
+      - 256
+      - 256
+      - 256
+    activation: Sin
+    append_dim: 0
+    latent_dim: 0
+    obsrv_dim: *obs_dim
+    action_dim: 18
+    pretrained_path:
+
+eval:
+  model_type: [highest, highest]
+  step: [0, 0]
+  eval_timeout: 1000
+  imaginary_horizon: 300
