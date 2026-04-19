@@ -44,10 +44,10 @@ def main():
     parser.add_argument("--checkpoint", type=str,
                         default="ckpts/mjlab_walk/model_1000.pt",
                         help="Path to MjLab walking policy checkpoint")
-    parser.add_argument("--kp", type=float, default=50.0,
-                        help="Uniform kp (hand-tuned for this robot; default 50)")
-    parser.add_argument("--kd", type=float, default=3.0,
-                        help="Uniform kd (hand-tuned for this robot; default 3)")
+    parser.add_argument("--kp", type=str, default="50,50,100",
+                        help="Per-joint-type kp: hip,thigh,calf (calf stiffer to reduce sag)")
+    parser.add_argument("--kd", type=str, default="3,3,5",
+                        help="Per-joint-type kd: hip,thigh,calf")
     parser.add_argument("--dt", type=float, default=0.02,
                         help="Control loop period in seconds (default: 0.02, i.e. 50Hz)")
     parser.add_argument("--log", type=str, default=None,
@@ -66,7 +66,9 @@ def main():
         if log_path == "auto":
             os.makedirs("logs", exist_ok=True)
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_path = f"logs/walk_{ts}_kp{args.kp:g}_kd{args.kd:g}.csv"
+            kp_tag = args.kp.replace(",", "-")
+            kd_tag = args.kd.replace(",", "-")
+            log_path = f"logs/walk_{ts}_kp{kp_tag}_kd{kd_tag}.csv"
         log_file = open(log_path, "w", newline="")
         log_writer = csv.writer(log_file)
         header = ["step", "time"]
@@ -89,8 +91,11 @@ def main():
     controller.test()
 
     wrapper = Wrapper()
-    wrapper.kp = [args.kp] * 12
-    wrapper.kd = [args.kd] * 12
+    kp_per = [float(x) for x in args.kp.split(",")]
+    kd_per = [float(x) for x in args.kd.split(",")]
+    wrapper.kp = kp_per * 4  # [hip,thigh,calf] × 4 legs
+    wrapper.kd = kd_per * 4
+    print(f"PD gains: kp={wrapper.kp[:3]}×4  kd={wrapper.kd[:3]}×4")
 
     # ── Preset poses (in hardware order: FR, FL, BR, BL) ──
     # MjLab default standing pose in MuJoCo order: FL, FR, BL, BR
@@ -137,7 +142,6 @@ def main():
 
     # ── Reset controller and start ──
     controller.reset()
-    decimation_time = time.time()
 
     # Start input listener
     input_thread = threading.Thread(target=listen_input, daemon=True)
@@ -152,10 +156,17 @@ def main():
 
     step = 0
     loop_start_time = time.time()
+    next_control_time = time.time()
     try:
         last_action_hw = stand_hw
         while True:
-            if time.time() - decimation_time > dt:
+            now = time.time()
+            if now >= next_control_time:
+                # Schedule next step BEFORE work so cadence is locked to wall clock.
+                next_control_time += dt
+                # If we fell behind by more than one period, resync (avoid runaway catch-up).
+                if now - next_control_time > dt:
+                    next_control_time = now + dt
                 # Optionally force cmd=0 at start for diagnostic capture
                 active_cmd = (
                     [0.0, 0.0, 0.0] if step < args.hold_cmd_zero_steps else command
@@ -210,7 +221,6 @@ def main():
                     )
 
                 step += 1
-                decimation_time = time.time()
 
     except KeyboardInterrupt:
         print("\nShutting down: stand -> sit")
