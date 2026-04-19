@@ -80,6 +80,20 @@ def main():
         print(f"  → if standstill |a| is >0.2 consistently, the policy thinks the "
               f"robot is not at rest — likely an obs mismatch.")
 
+        # Per-joint standstill raw action — sign + magnitude reveal obs bugs.
+        # All hips pegged one sign → hip-sign flipped; one leg asymmetric → ordering bug.
+        raw_s = raw[stand_mask]
+        names = [f"{leg}_{kind}" for leg in ["FL", "FR", "BL", "BR"]
+                 for kind in ["hip", "thi", "cal"]]
+        print("  per-joint standstill raw action (MJ order):")
+        print(f"    {'joint':8s}  {'mean':>7s}  {'std':>6s}  {'sat_pos%':>8s}  {'sat_neg%':>8s}")
+        for i, n in enumerate(names):
+            col = raw_s[:, i]
+            sat_pos = (col > 1.0).mean() * 100
+            sat_neg = (col < -1.0).mean() * 100
+            print(f"    {n:8s}  {col.mean():+7.3f}  {col.std():6.3f}  "
+                  f"{sat_pos:8.1f}  {sat_neg:8.1f}")
+
     # ── Target vs actual joint position tracking error ──
     tgt_cols = [f"target_mj_{i}" for i in range(12)]
     jp_cols = [f"jpos_mj_{i}" for i in range(12)]
