@@ -52,7 +52,7 @@ def main():
                         default="ckpts/mjlab_walk/model_1000.pt",
                         help="Path to MjLab walking policy checkpoint")
     parser.add_argument("--safety_config", type=str,
-                        default="train_result/nature/go2_mujoco_isaacs_v22/config.yaml",
+                        default="train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml",
                         help="Path to ISAACS config YAML (canonical copy lives with the weights)")
     parser.add_argument("--safety_model_dir", type=str, default=None,
                         help="Path to ISAACS model dir (auto from config if omitted)")

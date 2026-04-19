@@ -12,7 +12,7 @@
 # Usage:
 #   python test_mjlab_rcbf_numpad.py \
 #       --walk_ckpt ckpts/mjlab_walk/model_1000.pt \
-#       --safety_config config/rcbf/go2_mujoco_isaacs_v22.yaml \
+#       --safety_config train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml \
 #       --kappa 0.995
 # --------------------------------------------------------
 
@@ -48,7 +48,7 @@ def main():
     parser.add_argument("--walk_ckpt", type=str,
                         default="ckpts/mjlab_walk/model_1000.pt")
     parser.add_argument("--safety_config", type=str,
-                        default="train_result/nature/go2_mujoco_isaacs_v22/config.yaml")
+                        default="train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml")
     parser.add_argument("--safety_model_dir", type=str, default=None)
     parser.add_argument("--ctrl_step", type=int, default=None)
     parser.add_argument("--dstb_step", type=int, default=None)

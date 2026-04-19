@@ -44,7 +44,7 @@ class MujocoSafetyEnforcer:
     """
 
     def __init__(self,
-                 config_path: str = "train_result/nature/go2_mujoco_isaacs_v22/config.yaml",
+                 config_path: str = "train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml",
                  model_dir: str = None,
                  ctrl_step: int = None,
                  dstb_step: int = None,

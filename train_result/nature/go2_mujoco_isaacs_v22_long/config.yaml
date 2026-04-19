@@ -89,13 +89,13 @@ agent:
   reset_criterion: failure
 
 solver:
-  device: cpu
+  device: cuda
   rollout_env_device: cpu
-  num_envs: 1
+  num_envs: 8
   num_actors: 2
   num_critics: 1
   grad_method: original
-  max_steps: 20_000_000
+  max_steps: 100_000_000
   opt_period: 20_000
   num_updates_per_opt: 1_000
   eval_period: 200_000
@@ -108,16 +108,16 @@ solver:
     dstb: *dstb_range
   memory_capacity: 1_000_000
   softmax_rationality: 3.0
-  use_wandb: false
+  use_wandb: true
   project_name: nature
-  name: go2_mujoco_isaacs_v22
-  max_model: 20
+  name: go2_mujoco_isaacs_v22_long
+  max_model: 50
   save_top_k:
-    ctrl: 10
-    dstb: 10
-  out_folder: train_result/nature/go2_mujoco_isaacs_v22
+    ctrl: 20
+    dstb: 20
+  out_folder: train_result/nature/go2_mujoco_isaacs_v22_long
   eval:
-    b4_learn: false
+    b4_learn: true
     metric: reach-avoid
     aux_metric: [ep_length, safety]
     num_trajectories: 100

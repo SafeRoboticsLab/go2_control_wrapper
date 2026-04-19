@@ -130,8 +130,8 @@ Uses `RARL/sac_adv.py` → `restore_refactor()` with paths:
 
 ## 4. New Safety Policy (MuJoCo ISAACS)
 
-**Source:** `safe_adaptation_dev`, config `config/rcbf/go2_mujoco_isaacs_v22.yaml`
-**Train output:** `train_result/nature/go2_mujoco_isaacs_v22_long/` (on remote PC)
+**Source:** `safe_adaptation_dev`, config bundled at `train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml`
+**Train output:** `train_result/nature/go2_mujoco_isaacs_v22_long/` — step 50,600,000 is the deployed checkpoint.
 
 ### Key Differences from Old Policy
 
@@ -206,7 +206,8 @@ Solve: u* = argmin ||u_task - u||²  s.t. constraint
 | `test_mjlab_value_shielding_numpad.py` | LRSF value shielding demo |
 | `test_mjlab_rcbf_numpad.py` | RCBF safety filter demo |
 | `ckpts/mjlab_walk/model_1000.pt` | Walking policy checkpoint (copied) |
-| `config/rcbf/go2_mujoco_isaacs_v22.yaml` | ISAACS config (copied) |
+| `train_result/nature/go2_mujoco_isaacs_v22_long/config.yaml` | ISAACS training config (bundled with weights) |
+| `train_result/nature/go2_mujoco_isaacs_v22_long/model/` | ctrl/dstb/central checkpoints at step 50,600,000 |
 
 ---
 
