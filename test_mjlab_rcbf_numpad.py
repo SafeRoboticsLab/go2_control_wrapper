@@ -72,6 +72,10 @@ def main():
                         help="Print rich diagnostic every N control steps (25 @ 50Hz = 0.5s)")
     parser.add_argument("--log", type=str, default=None,
                         help="Optional CSV log path. If 'auto', uses logs/rcbf_<timestamp>.csv")
+    parser.add_argument("--action_smooth", type=float, default=0.3,
+                        help="EMA rate on final commanded action_pb (1.0=no smoothing/raw, "
+                             "0.3=moderate low-pass, 0.1=heavy). Reduces visible shake at cmd=0 "
+                             "caused by stacked policy output noise on low-kd PD.")
     args = parser.parse_args()
 
     # ── Initialize ──
@@ -170,6 +174,8 @@ def main():
     loop_start_time = time.time()
     step = 0
     next_control_time = time.time()
+    # Low-pass state for action smoothing (EMA on commanded target)
+    action_pb_smoothed = None
     try:
         last_action_hw = stand_hw
         while True:
@@ -201,11 +207,22 @@ def main():
                 # of the walking policy's target (matches integrate_forward
                 # in training when RCBF is active).
                 inc_pb = np.clip(np.asarray(filtered_pb), -0.5, 0.5)
-                action_pb = walk_target_pb + ACTION_SMOOTHING * inc_pb
+                action_pb_raw = walk_target_pb + ACTION_SMOOTHING * inc_pb
                 # Hardware joint limits from go2_dynamics_mujoco.py:73-75
-                action_pb[[0, 3, 6, 9]]  = np.clip(action_pb[[0, 3, 6, 9]],  -0.8, 0.8)
-                action_pb[[1, 4, 7, 10]] = np.clip(action_pb[[1, 4, 7, 10]], -1.2, 1.0)
-                action_pb[[2, 5, 8, 11]] = np.clip(action_pb[[2, 5, 8, 11]], -2.5, -0.85)
+                action_pb_raw[[0, 3, 6, 9]]  = np.clip(action_pb_raw[[0, 3, 6, 9]],  -0.8, 0.8)
+                action_pb_raw[[1, 4, 7, 10]] = np.clip(action_pb_raw[[1, 4, 7, 10]], -1.2, 1.0)
+                action_pb_raw[[2, 5, 8, 11]] = np.clip(action_pb_raw[[2, 5, 8, 11]], -2.5, -0.85)
+
+                # EMA low-pass on the final commanded target. The walking policy
+                # and safety policy each contribute high-frequency jitter (especially
+                # at cmd=0); smoothing here shows up on hw as reduced joint shake.
+                if action_pb_smoothed is None or args.action_smooth >= 1.0:
+                    action_pb = action_pb_raw
+                else:
+                    beta = args.action_smooth
+                    action_pb = (1.0 - beta) * action_pb_smoothed + beta * action_pb_raw
+                action_pb_smoothed = action_pb.copy()
+
                 action_mj = np.array(wrapper.map(action_pb, pb_order, mj_order))
 
                 # 3. Clip joint limits
