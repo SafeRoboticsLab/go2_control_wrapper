@@ -41,8 +41,8 @@ def main():
     parser.add_argument("--checkpoint", type=str,
                         default="ckpts/mjlab_walk/model_1000.pt",
                         help="Path to MjLab walking policy checkpoint")
-    parser.add_argument("--kp", type=str, default="100,100,200",
-                        help="Per-joint-type kp: hip,thigh,calf (default: 100,100,200)")
+    parser.add_argument("--kp", type=str, default="20,20,40",
+                        help="Per-joint-type kp: hip,thigh,calf (matches unitree_rl_mjlab deploy.yaml)")
     parser.add_argument("--kd", type=str, default="1,1,2",
                         help="Per-joint-type kd: hip,thigh,calf (default: 1,1,2)")
     parser.add_argument("--dt", type=float, default=0.02,
@@ -54,10 +54,14 @@ def main():
     controller.test()
 
     wrapper = Wrapper()
-    kp_per_joint = [float(x) for x in args.kp.split(",")]  # [hip, thigh, calf]
-    kd_per_joint = [float(x) for x in args.kd.split(",")]
-    wrapper.kp = kp_per_joint * 4  # tiled for 4 legs
-    wrapper.kd = kd_per_joint * 4
+    # Policy-running gains (soft, policy compensates)
+    policy_kp = [float(x) for x in args.kp.split(",")] * 4
+    policy_kd = [float(x) for x in args.kd.split(",")] * 4
+    # Stand-hold gains (stiff, for open-loop sit->stand transition)
+    stand_kp = [60, 80, 80] * 4
+    stand_kd = [5, 4, 4] * 4
+    wrapper.kp = stand_kp
+    wrapper.kd = stand_kd
 
     # ── Preset poses (in hardware order: FR, FL, BR, BL) ──
     # MjLab default standing pose in MuJoCo order: FL, FR, BL, BR
@@ -102,6 +106,10 @@ def main():
     transition(wrapper, sit, stand_hw)
     time.sleep(0.5)
 
+    # ── Switch to policy gains ──
+    wrapper.kp = policy_kp
+    wrapper.kd = policy_kd
+
     # ── Reset controller and start ──
     controller.reset()
     decimation_time = time.time()
@@ -138,6 +146,9 @@ def main():
 
     except KeyboardInterrupt:
         print("\nShutting down: stand -> sit")
+        # Restore stand-hold gains before open-loop sit transition
+        wrapper.kp = stand_kp
+        wrapper.kd = stand_kd
         stand_hw_current = wrapper.map(last_action_hw, wrapper.order, wrapper.order)
         transition(wrapper, stand_hw_current, stand_hw)
         transition(wrapper, stand_hw, sit)
