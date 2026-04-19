@@ -69,10 +69,20 @@ def main():
     parser.add_argument("--dt", type=float, default=0.02,
                         help="Control loop period (sec)")
     parser.add_argument("--no_stable_stance", action="store_true",
-                        help="Disable the stable-stance fallback when lx > -0.05. "
+                        help="Disable the stable-stance fallback when lx > lx_enter_stance. "
                              "With this flag, the learned safety controller commands the robot "
                              "on every shielded step — useful for evaluating the safety policy "
                              "itself, not the hand-designed fallback pose.")
+    parser.add_argument("--stance_blend", type=float, default=0.02,
+                        help="Per-step EMA rate for annealing safety_target toward stable_stance. "
+                             "0.02 at 50Hz reaches ~95%% of target in ~3s. "
+                             "Larger = faster but more jerky. Set 1.0 to replicate the old "
+                             "instantaneous swap (may flip the robot).")
+    parser.add_argument("--lx_enter_stance", type=float, default=-0.02,
+                        help="Enter stable-stance mode when lx > this. Tighter (closer to 0) "
+                             "means robot must be more upright before fallback engages. "
+                             "Stance mode is latching: once entered, we stay in it until "
+                             "shielding itself disengages (walking resumes).")
     parser.add_argument("--safety_only", action="store_true",
                         help="Skip walking policy entirely; safety ctrl commands every step. "
                              "Use for first-time validation of the safety policy on hardware.")
@@ -129,6 +139,10 @@ def main():
     # Persistent target that the safety policy's increments accumulate into.
     # Re-initialized at the start of every shielded episode (see reset below).
     safety_target_pb = home_pb.copy()
+    # Hysteretic stable-stance mode flag: once we enter stance mode we stay in
+    # it until lx drops below lx_exit_stance, preventing flicker near the
+    # boundary and the associated repeated target jumps.
+    in_stance_mode = False
 
     command = [0., 0., 0.]
     dt = args.dt
@@ -216,16 +230,31 @@ def main():
                     safety_target_pb[[2, 5, 8, 11]] = np.clip(safety_target_pb[[2, 5, 8, 11]], -2.5, -0.85)  # knee
                     action_pb = safety_target_pb
 
-                    # Optional hand-designed fallback when already in target set
+                    # Optional hand-designed fallback when the robot is
+                    # upright enough (lx > lx_enter_stance). Stance mode is
+                    # latching: once entered we stay until shielding itself
+                    # disengages (walk branch below clears in_stance_mode).
+                    # Anneal toward stable_stance_pb with an EMA blend so the
+                    # hand-off doesn't spike PD torques.
                     if not args.no_stable_stance:
-                        margin = safetyEnforcer.target_margin(wrapper)
-                        lx = min(margin.values())
-                        if lx > -0.05:
-                            action_pb = stable_stance_pb
-                            safety_target_pb = stable_stance_pb.copy()
+                        if not in_stance_mode:
+                            margin = safetyEnforcer.target_margin(wrapper)
+                            lx = min(margin.values())
+                            if lx > args.lx_enter_stance:
+                                in_stance_mode = True
+                        if in_stance_mode:
+                            beta = args.stance_blend
+                            safety_target_pb = (
+                                (1.0 - beta) * safety_target_pb + beta * stable_stance_pb
+                            )
+                            action_pb = safety_target_pb
+                            status = "STANCE"
+                        else:
+                            status = "SHIELD"
+                    else:
+                        status = "SHIELD"
 
                     action_mj = np.array(wrapper.map(action_pb, pb_order, mj_order))
-                    status = "SHIELD"
                 else:
                     # Walking policy drives the robot; keep safety_target_pb
                     # in sync with the walking target so that when safety
@@ -233,6 +262,9 @@ def main():
                     # current intended pose (mirrors eval script's saved_targets).
                     safety_target_pb = np.array(wrapper.map(target_mj, mj_order, pb_order),
                                                 dtype=np.float32)
+                    # Also clear stance mode so the next shielding episode
+                    # re-evaluates lx fresh instead of inheriting stale state.
+                    in_stance_mode = False
                     action_mj = target_mj
                     status = "WALK  "
 
