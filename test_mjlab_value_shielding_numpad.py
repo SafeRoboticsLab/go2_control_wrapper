@@ -118,6 +118,18 @@ def main():
 
     stand_hw = wrapper.map(stand_mj, mj_order, wrapper.order)
 
+    # Training uses a persistent target in MuJoCo order with EMA-smoothed
+    # incremental updates (see go2_dynamics_mujoco.integrate_forward:1385
+    # and eval_safety_filter line 1099-1102). We mirror that exactly in PB
+    # order here. The home PB-order stance matches the training DEFAULT_STANCE.
+    ACTION_SMOOTHING = 0.3  # from config agent.action_smoothing
+    # MJLAB_DEFAULT_DOF_POS is MJ order [FL,FR,BL,BR]; PB order is [FL,BL,FR,BR]
+    home_pb = np.array(wrapper.map(list(MJLAB_DEFAULT_DOF_POS), mj_order, pb_order),
+                       dtype=np.float32)
+    # Persistent target that the safety policy's increments accumulate into.
+    # Re-initialized at the start of every shielded episode (see reset below).
+    safety_target_pb = home_pb.copy()
+
     command = [0., 0., 0.]
     dt = args.dt
 
@@ -192,23 +204,35 @@ def main():
                 filtered_action = safetyEnforcer.get_action(wrapper, walk_ctrl_pb)
 
                 if safetyEnforcer.is_shielded:
-                    # Safety override: use safety action (incremental, PB order)
-                    # Convert to absolute targets
-                    action_pb = np.array(filtered_action) + joint_pos_pb
+                    # Training convention: safety action is an INCREMENT added
+                    # to a persistent target (not to measured joint_pos), with
+                    # 0.3 EMA smoothing. See eval_safety_filter.py:1099-1102
+                    # and go2_dynamics_mujoco.py:1379-1385.
+                    inc_pb = np.clip(np.asarray(filtered_action), -0.5, 0.5)
+                    safety_target_pb = safety_target_pb + ACTION_SMOOTHING * inc_pb
+                    # Hardware joint limits used in training (go2_dynamics_mujoco.py:73-75)
+                    safety_target_pb[[0, 3, 6, 9]]  = np.clip(safety_target_pb[[0, 3, 6, 9]],  -0.8, 0.8)    # abduction
+                    safety_target_pb[[1, 4, 7, 10]] = np.clip(safety_target_pb[[1, 4, 7, 10]], -1.2, 1.0)    # hip
+                    safety_target_pb[[2, 5, 8, 11]] = np.clip(safety_target_pb[[2, 5, 8, 11]], -2.5, -0.85)  # knee
+                    action_pb = safety_target_pb
 
-                    # Optionally switch to stable stance when in target set
+                    # Optional hand-designed fallback when already in target set
                     if not args.no_stable_stance:
                         margin = safetyEnforcer.target_margin(wrapper)
                         lx = min(margin.values())
                         if lx > -0.05:
                             action_pb = stable_stance_pb
+                            safety_target_pb = stable_stance_pb.copy()
 
-                    # Convert PB -> MJ for output
                     action_mj = np.array(wrapper.map(action_pb, pb_order, mj_order))
-
                     status = "SHIELD"
                 else:
-                    # Walking policy action (already in MuJoCo order)
+                    # Walking policy drives the robot; keep safety_target_pb
+                    # in sync with the walking target so that when safety
+                    # later engages, its first increment references the
+                    # current intended pose (mirrors eval script's saved_targets).
+                    safety_target_pb = np.array(wrapper.map(target_mj, mj_order, pb_order),
+                                                dtype=np.float32)
                     action_mj = target_mj
                     status = "WALK  "
 

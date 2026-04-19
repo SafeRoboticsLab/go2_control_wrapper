@@ -91,6 +91,12 @@ def main():
     sit = [-0.1, 1.5, -2.5, 0.1, 1.5, -2.5, -0.4, 1.5, -2.5, 0.4, 1.5, -2.5]
     stand_hw = wrapper.map(stand_mj, mj_order, wrapper.order)
 
+    # Training applies RCBF output as increment to a persistent target with
+    # 0.3 EMA smoothing; see go2_dynamics_mujoco.py:1379-1385 and
+    # eval_safety_filter.py:1092-1098 (RCBF does NOT restore saved_targets,
+    # so the increment accumulates on top of walking policy's target).
+    ACTION_SMOOTHING = 0.3
+
     command = [0., 0., 0.]
     dt = args.dt
 
@@ -140,16 +146,17 @@ def main():
                 next_control_time += dt
                 if now - next_control_time > dt:
                     next_control_time = now + dt
-                # 1. Walking policy action
+                # 1. Walking policy action (absolute target in MJ order)
                 target_mj = controller.get_action(wrapper, command=command)
+                walk_target_pb = np.array(wrapper.map(target_mj, mj_order, pb_order),
+                                          dtype=np.float32)
 
-                # Convert to incremental in PB order for safety filter
-                joint_pos_hw = wrapper.state[8:20]
-                joint_pos_pb = np.array(wrapper.map(joint_pos_hw, wrapper.order, pb_order))
-                target_pb = np.array(wrapper.map(target_mj, mj_order, pb_order))
-                walk_ctrl_pb = np.clip(target_pb - joint_pos_pb, -0.5, 0.5)
-
-                # 2. RCBF filter
+                # 2. RCBF filter.
+                # In training's increment mode the task action passed to the
+                # filter is zero — the walking policy has already set the
+                # absolute target, and RCBF's output is a SEPARATE increment
+                # layered on top of that target. See eval_safety_filter:1030.
+                walk_ctrl_pb = np.zeros(12, dtype=np.float32)
                 filtered_pb, q_val, n_iters, alpha = safetyEnforcer.rcbf_projected_gradient(
                     wrapper, walk_ctrl_pb,
                     kappa=args.kappa,
@@ -158,8 +165,15 @@ def main():
                     lr=args.rcbf_lr
                 )
 
-                # Convert filtered action to absolute targets
-                action_pb = np.array(filtered_pb) + joint_pos_pb
+                # Apply the filtered correction with 0.3 EMA smoothing on top
+                # of the walking policy's target (matches integrate_forward
+                # in training when RCBF is active).
+                inc_pb = np.clip(np.asarray(filtered_pb), -0.5, 0.5)
+                action_pb = walk_target_pb + ACTION_SMOOTHING * inc_pb
+                # Hardware joint limits from go2_dynamics_mujoco.py:73-75
+                action_pb[[0, 3, 6, 9]]  = np.clip(action_pb[[0, 3, 6, 9]],  -0.8, 0.8)
+                action_pb[[1, 4, 7, 10]] = np.clip(action_pb[[1, 4, 7, 10]], -1.2, 1.0)
+                action_pb[[2, 5, 8, 11]] = np.clip(action_pb[[2, 5, 8, 11]], -2.5, -0.85)
                 action_mj = np.array(wrapper.map(action_pb, pb_order, mj_order))
 
                 # 3. Clip joint limits
