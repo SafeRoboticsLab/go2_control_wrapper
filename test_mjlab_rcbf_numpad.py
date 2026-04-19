@@ -18,6 +18,9 @@
 
 import time
 import argparse
+import csv
+import datetime
+import os
 import numpy as np
 import threading
 
@@ -65,6 +68,10 @@ def main():
     parser.add_argument("--kd", type=str, default="1,1,2",
                         help="Per-joint-type kd: hip,thigh,calf (matched to walking policy training)")
     parser.add_argument("--dt", type=float, default=0.02)
+    parser.add_argument("--print_every", type=int, default=25,
+                        help="Print rich diagnostic every N control steps (25 @ 50Hz = 0.5s)")
+    parser.add_argument("--log", type=str, default=None,
+                        help="Optional CSV log path. If 'auto', uses logs/rcbf_<timestamp>.csv")
     args = parser.parse_args()
 
     # ── Initialize ──
@@ -122,6 +129,29 @@ def main():
             elif user_input == 'q':
                 break
 
+    # ── Set up CSV log ──
+    log_file = None
+    log_writer = None
+    if args.log:
+        log_path = args.log
+        if log_path == "auto":
+            os.makedirs("logs", exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_path = f"logs/rcbf_{ts}_kappa{args.kappa}.csv"
+        log_file = open(log_path, "w", newline="")
+        log_writer = csv.writer(log_file)
+        header = ["step", "time", "cmd_vx", "cmd_vy", "cmd_wz",
+                  "V_hat", "Q_val", "threshold", "alpha", "n_iters",
+                  "filtered_abs_max", "filtered_norm",
+                  "delta_target_abs_max", "delta_target_norm",
+                  "roll", "pitch", "active"]
+        # Full filtered_pb (12) + walk_target_pb (12) + final action_pb (12)
+        header += [f"filtered_pb_{i}" for i in range(12)]
+        header += [f"walk_target_pb_{i}" for i in range(12)]
+        header += [f"action_pb_{i}" for i in range(12)]
+        log_writer.writerow(header)
+        print(f"Logging to {log_path}")
+
     # ── Startup ──
     wrapper.update(sit)
     time.sleep(0.5)
@@ -137,6 +167,8 @@ def main():
     print(f"\n=== MjLab Walk + RCBF Filter (kappa={args.kappa}) ===")
     print("Use numpad keys to control. Ctrl+C to stop.\n")
 
+    loop_start_time = time.time()
+    step = 0
     next_control_time = time.time()
     try:
         last_action_hw = stand_hw
@@ -185,12 +217,53 @@ def main():
                 wrapper.update(action_mj, input_order=mj_order)
                 last_action_hw = wrapper.map(action_mj, mj_order, wrapper.order)
 
-                status = "RCBF " if alpha > 1e-4 else "WALK "
-                v_str = f"V={safetyEnforcer.prev_v_hat:.3f}" if safetyEnforcer.prev_v_hat is not None else "V=?"
-                print(f"\r  [{status}] {v_str}  Q={q_val:.3f}  a={alpha:.3f}  it={n_iters}", end="")
+                # ── Diagnostics ──
+                V_hat = safetyEnforcer.prev_v_hat if safetyEnforcer.prev_v_hat is not None else float('nan')
+                threshold = args.kappa * V_hat if V_hat == V_hat else float('nan')
+                filtered_arr = np.asarray(filtered_pb, dtype=np.float32)
+                filtered_abs_max = float(np.max(np.abs(filtered_arr)))
+                filtered_norm = float(np.linalg.norm(filtered_arr))
+                # How much did the final action differ from pure walking target?
+                delta_pb = action_pb - walk_target_pb
+                delta_abs_max = float(np.max(np.abs(delta_pb)))
+                delta_norm = float(np.linalg.norm(delta_pb))
+                roll, pitch = wrapper.state[3], wrapper.state[4]
+                active = alpha > 1e-4
+                status = "RCBF " if active else "WALK "
+
+                if log_writer is not None:
+                    row = [step, time.time() - loop_start_time,
+                           command[0], command[1], command[2],
+                           V_hat, q_val, threshold, alpha, n_iters,
+                           filtered_abs_max, filtered_norm,
+                           delta_abs_max, delta_norm,
+                           roll, pitch, int(active)]
+                    row += list(filtered_arr)
+                    row += list(walk_target_pb)
+                    row += list(action_pb)
+                    log_writer.writerow(row)
+
+                if step % args.print_every == 0:
+                    # Margin = Q - threshold.  > 0 means task action is safe (no
+                    # intervention needed); < 0 means RCBF had to push u toward u_safe.
+                    margin = q_val - threshold
+                    print(
+                        f"[{step:5d}] [{status}] "
+                        f"V={V_hat:+.3f} Q={q_val:+.3f} thr={threshold:+.3f} "
+                        f"marg={margin:+.3f} a={alpha:.3f} it={n_iters:2d} "
+                        f"|flt|_max={filtered_abs_max:.3f} "
+                        f"|Δtgt|_max={delta_abs_max:.3f} "
+                        f"r={roll:+.2f} p={pitch:+.2f}"
+                    )
+
+                step += 1
 
     except KeyboardInterrupt:
         print("\nShutting down...")
+        if log_file is not None:
+            log_file.flush()
+            log_file.close()
+            print("Log closed.")
         transition(wrapper, last_action_hw, stand_hw)
         transition(wrapper, stand_hw, sit)
         print("Robot locked in SIT mode.")
