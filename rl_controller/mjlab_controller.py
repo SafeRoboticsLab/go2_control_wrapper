@@ -88,7 +88,11 @@ def load_mjlab_actor(checkpoint_path: str, device: str = 'cpu',
                      obs_dim: int = 47, action_dim: int = 12,
                      hidden_dims: tuple = (512, 256, 128)) -> MjLabActorNet:
     """Load MjLab actor weights from checkpoint into standalone network."""
-    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    try:
+        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    except TypeError:
+        # Older torch (<1.13) doesn't support weights_only kwarg
+        ckpt = torch.load(checkpoint_path, map_location=device)
     actor_sd = ckpt['actor_state_dict']
 
     net = MjLabActorNet(obs_dim, action_dim, hidden_dims).to(device)
