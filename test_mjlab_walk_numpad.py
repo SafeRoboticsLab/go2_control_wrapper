@@ -12,6 +12,9 @@
 
 import time
 import argparse
+import csv
+import datetime
+import os
 import numpy as np
 import threading
 
@@ -41,27 +44,53 @@ def main():
     parser.add_argument("--checkpoint", type=str,
                         default="ckpts/mjlab_walk/model_1000.pt",
                         help="Path to MjLab walking policy checkpoint")
-    parser.add_argument("--kp", type=str, default="20,20,40",
-                        help="Per-joint-type kp: hip,thigh,calf (matches unitree_rl_mjlab deploy.yaml)")
-    parser.add_argument("--kd", type=str, default="1,1,2",
-                        help="Per-joint-type kd: hip,thigh,calf (default: 1,1,2)")
+    parser.add_argument("--kp", type=float, default=50.0,
+                        help="Uniform kp (hand-tuned for this robot; default 50)")
+    parser.add_argument("--kd", type=float, default=3.0,
+                        help="Uniform kd (hand-tuned for this robot; default 3)")
     parser.add_argument("--dt", type=float, default=0.02,
                         help="Control loop period in seconds (default: 0.02, i.e. 50Hz)")
+    parser.add_argument("--log", type=str, default=None,
+                        help="Optional CSV log path. If 'auto', uses logs/walk_<timestamp>.csv")
+    parser.add_argument("--print_every", type=int, default=25,
+                        help="Print diagnostic summary every N control steps (25 @ 50Hz = 0.5s)")
+    parser.add_argument("--hold_cmd_zero_steps", type=int, default=0,
+                        help="Force cmd=[0,0,0] for the first N control steps to capture standstill behavior")
     args = parser.parse_args()
+
+    # ── Set up CSV log ──
+    log_file = None
+    log_writer = None
+    if args.log:
+        log_path = args.log
+        if log_path == "auto":
+            os.makedirs("logs", exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_path = f"logs/walk_{ts}_kp{args.kp:g}_kd{args.kd:g}.csv"
+        log_file = open(log_path, "w", newline="")
+        log_writer = csv.writer(log_file)
+        header = ["step", "time"]
+        header += ["cmd_vx", "cmd_vy", "cmd_wz"]
+        header += ["ang_vel_x", "ang_vel_y", "ang_vel_z"]
+        header += ["proj_g_x", "proj_g_y", "proj_g_z"]
+        header += ["phase_s", "phase_c"]
+        header += [f"jpos_rel_{i}" for i in range(12)]  # MJ order
+        header += [f"jvel_mj_{i}" for i in range(12)]
+        header += [f"last_act_{i}" for i in range(12)]
+        header += [f"raw_act_{i}" for i in range(12)]    # policy output, pre-clip
+        header += [f"target_mj_{i}" for i in range(12)]  # after clip + default offset
+        header += [f"jpos_mj_{i}" for i in range(12)]    # actual joint pos (MJ order)
+        header += ["roll", "pitch"]
+        log_writer.writerow(header)
+        print(f"Logging to {log_path}")
 
     # ── Initialize controller and wrapper ──
     controller = MjLabRLController(checkpoint_path=args.checkpoint)
     controller.test()
 
     wrapper = Wrapper()
-    # Policy-running gains (soft, policy compensates)
-    policy_kp = [float(x) for x in args.kp.split(",")] * 4
-    policy_kd = [float(x) for x in args.kd.split(",")] * 4
-    # Stand-hold gains (stiff, for open-loop sit->stand transition)
-    stand_kp = [60, 80, 80] * 4
-    stand_kd = [5, 4, 4] * 4
-    wrapper.kp = stand_kp
-    wrapper.kd = stand_kd
+    wrapper.kp = [args.kp] * 12
+    wrapper.kd = [args.kd] * 12
 
     # ── Preset poses (in hardware order: FR, FL, BR, BL) ──
     # MjLab default standing pose in MuJoCo order: FL, FR, BL, BR
@@ -106,10 +135,6 @@ def main():
     transition(wrapper, sit, stand_hw)
     time.sleep(0.5)
 
-    # ── Switch to policy gains ──
-    wrapper.kp = policy_kp
-    wrapper.kd = policy_kd
-
     # ── Reset controller and start ──
     controller.reset()
     decimation_time = time.time()
@@ -125,15 +150,22 @@ def main():
     print("  5=Stop")
     print("  Ctrl+C to stop\n")
 
+    step = 0
+    loop_start_time = time.time()
     try:
         last_action_hw = stand_hw
         while True:
             if time.time() - decimation_time > dt:
+                # Optionally force cmd=0 at start for diagnostic capture
+                active_cmd = (
+                    [0.0, 0.0, 0.0] if step < args.hold_cmd_zero_steps else command
+                )
+
                 # Get walking policy action (returns MuJoCo order targets)
-                target_mj = controller.get_action(wrapper, command=command)
+                target_mj_raw = controller.get_action(wrapper, command=active_cmd)
 
                 # Clip joint limits
-                target_mj = np.array(target_mj)
+                target_mj = np.array(target_mj_raw).copy()
                 target_mj[[0, 3, 6, 9]] = np.clip(target_mj[[0, 3, 6, 9]], -0.7, 0.7)      # hip
                 target_mj[[1, 4, 7, 10]] = np.clip(target_mj[[1, 4, 7, 10]], -1.5, 1.5)    # thigh
                 target_mj[[2, 5, 8, 11]] = np.clip(target_mj[[2, 5, 8, 11]], -2.7, -0.85)  # calf
@@ -142,13 +174,50 @@ def main():
                 wrapper.update(target_mj, input_order=sim_order)
                 last_action_hw = wrapper.map(target_mj, sim_order, wrapper.order)
 
+                # ── Diagnostics ──
+                obs = controller._last_obs          # 47D
+                raw_act = controller._last_raw_action  # 12D pre-clip
+                jpos_hw = wrapper.state[8:20]
+                jpos_mj = np.array(wrapper.map(jpos_hw, wrapper.order, sim_order))
+                roll, pitch = wrapper.state[3], wrapper.state[4]
+
+                if log_writer is not None:
+                    row = [step, time.time() - loop_start_time]
+                    row += list(active_cmd)
+                    row += list(obs[0:3])     # ang_vel
+                    row += list(obs[3:6])     # proj_g
+                    row += list(obs[9:11])    # phase
+                    row += list(obs[11:23])   # jpos_rel
+                    row += list(obs[23:35])   # jvel
+                    row += list(obs[35:47])   # last_action (pre-step)
+                    row += list(raw_act)      # raw_action (this step)
+                    row += list(target_mj)    # clipped target in MJ order
+                    row += list(jpos_mj)      # actual jpos (MJ order)
+                    row += [roll, pitch]
+                    log_writer.writerow(row)
+
+                if step % args.print_every == 0:
+                    raw_max = np.max(np.abs(raw_act))
+                    raw_clip_count = int(np.sum(np.abs(raw_act) > 1.0))
+                    jvel_max = np.max(np.abs(obs[23:35]))
+                    ang_vel_max = np.max(np.abs(obs[0:3]))
+                    proj_g_xy = np.linalg.norm(obs[3:5])  # 0 when level
+                    print(
+                        f"[{step:5d}] cmd=({active_cmd[0]:+.2f},{active_cmd[1]:+.2f},{active_cmd[2]:+.2f}) "
+                        f"|raw_act|_max={raw_max:.3f} clipped={raw_clip_count}/12 "
+                        f"|ang_vel|_max={ang_vel_max:.2f} |jvel|_max={jvel_max:.2f} "
+                        f"|proj_g_xy|={proj_g_xy:.3f} roll={roll:+.2f} pitch={pitch:+.2f}"
+                    )
+
+                step += 1
                 decimation_time = time.time()
 
     except KeyboardInterrupt:
         print("\nShutting down: stand -> sit")
-        # Restore stand-hold gains before open-loop sit transition
-        wrapper.kp = stand_kp
-        wrapper.kd = stand_kd
+        if log_file is not None:
+            log_file.flush()
+            log_file.close()
+            print(f"Log closed.")
         stand_hw_current = wrapper.map(last_action_hw, wrapper.order, wrapper.order)
         transition(wrapper, stand_hw_current, stand_hw)
         transition(wrapper, stand_hw, sit)

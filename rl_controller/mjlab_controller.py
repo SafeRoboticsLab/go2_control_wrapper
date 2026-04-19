@@ -140,11 +140,18 @@ class MjLabRLController:
 
         self._last_action = np.zeros(12, dtype=np.float32)
         self._start_time = None
+        # Diagnostic cache (populated by get_action() each step)
+        self._last_obs = np.zeros(47, dtype=np.float32)
+        self._last_raw_action = np.zeros(12, dtype=np.float32)
+        self._last_target = MJLAB_DEFAULT_DOF_POS.copy()
 
     def reset(self):
         """Reset internal state. Call when starting a new walking session."""
         self._last_action = np.zeros(12, dtype=np.float32)
         self._start_time = time.time()
+        self._last_obs = np.zeros(47, dtype=np.float32)
+        self._last_raw_action = np.zeros(12, dtype=np.float32)
+        self._last_target = MJLAB_DEFAULT_DOF_POS.copy()
 
     def build_observation(self, wrapper, command=(0, 0, 0)):
         """Build 47D MjLab observation from real robot state.
@@ -217,14 +224,19 @@ class MjLabRLController:
         with torch.no_grad():
             obs_t = obs.unsqueeze(0).to(self.device)
             action_t = self.net(obs_t)
-            action = action_t.squeeze(0).cpu().numpy()
+            raw_action = action_t.squeeze(0).cpu().numpy()
 
         # Clip and store for next step's observation
-        action = np.clip(action, -1.0, 1.0)
+        action = np.clip(raw_action, -1.0, 1.0)
         self._last_action = action.copy()
 
         # Convert to absolute joint targets
         target = MJLAB_DEFAULT_DOF_POS + action * MJLAB_ACTION_SCALE
+
+        # Cache for diagnostics
+        self._last_obs = obs.cpu().numpy().copy()
+        self._last_raw_action = raw_action.copy()
+        self._last_target = target.copy()
         return target
 
     def test(self):
