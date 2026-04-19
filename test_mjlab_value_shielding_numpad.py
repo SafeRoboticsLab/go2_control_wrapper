@@ -68,8 +68,11 @@ def main():
                         help="Per-joint-type kd: hip,thigh,calf (matched to walking policy training)")
     parser.add_argument("--dt", type=float, default=0.02,
                         help="Control loop period (sec)")
-    parser.add_argument("--stable_stance_switch", action="store_true", default=True,
-                        help="Switch to stable stance when in target set")
+    parser.add_argument("--no_stable_stance", action="store_true",
+                        help="Disable the stable-stance fallback when lx > -0.05. "
+                             "With this flag, the learned safety controller commands the robot "
+                             "on every shielded step — useful for evaluating the safety policy "
+                             "itself, not the hand-designed fallback pose.")
     parser.add_argument("--safety_only", action="store_true",
                         help="Skip walking policy entirely; safety ctrl commands every step. "
                              "Use for first-time validation of the safety policy on hardware.")
@@ -194,7 +197,7 @@ def main():
                     action_pb = np.array(filtered_action) + joint_pos_pb
 
                     # Optionally switch to stable stance when in target set
-                    if args.stable_stance_switch:
+                    if not args.no_stable_stance:
                         margin = safetyEnforcer.target_margin(wrapper)
                         lx = min(margin.values())
                         if lx > -0.05:
