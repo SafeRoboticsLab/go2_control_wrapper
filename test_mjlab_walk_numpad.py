@@ -111,14 +111,14 @@ def main():
 
     # ── Numpad velocity commands ──
     key_commands = {
-        '8': [0.5, 0.0, 0.0],    # Forward
-        '2': [-0.3, 0.0, 0.0],   # Backward
-        '4': [0.0, 0.3, 0.0],    # Left
-        '6': [0.0, -0.3, 0.0],   # Right
-        '7': [0.5, 0.2, -0.3],   # Forward + Left Turn
-        '9': [0.5, -0.2, 0.3],   # Forward + Right Turn
-        '1': [-0.3, 0.2, -0.3],  # Backward + Left Turn
-        '3': [-0.3, -0.2, 0.3],  # Backward + Right Turn
+        '8': [1.0, 0.0, 0.0],    # Forward
+        '2': [-1.0, 0.0, 0.0],   # Backward
+        '4': [0.0, 0.5, 0.0],    # Left
+        '6': [0.0, -0.5, 0.0],   # Right
+        '7': [1.0, 0.4, -0.5],   # Forward + Left Turn
+        '9': [1.0, -0.4, 0.5],   # Forward + Right Turn
+        '1': [-1.0, 0.4, -0.5],  # Backward + Left Turn
+        '3': [-1.0, -0.4, 0.5],  # Backward + Right Turn
         '5': [0.0, 0.0, 0.0],    # Stop
     }
 

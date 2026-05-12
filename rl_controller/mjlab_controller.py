@@ -105,8 +105,13 @@ def load_mjlab_actor(checkpoint_path: str, device: str = 'cpu',
     for key in actor_sd:
         if key.startswith('mlp.'):
             state_dict[key] = actor_sd[key]
-    if 'distribution.std_param' in actor_sd:
-        state_dict['std_param'] = actor_sd['distribution.std_param']
+    # Always set std_param, use from checkpoint if available, else default
+    # Check for legacy 'distribution.std_param' or new 'std'
+    std_key = 'distribution.std_param' if 'distribution.std_param' in actor_sd else ('std' if 'std' in actor_sd else None)
+    if std_key:
+        state_dict['std_param'] = actor_sd[std_key]
+    else:
+        state_dict['std_param'] = torch.ones(action_dim, device=device)
 
     net.load_state_dict(state_dict)
     net.eval()

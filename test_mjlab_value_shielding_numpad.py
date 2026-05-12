@@ -132,7 +132,8 @@ def main():
     # incremental updates (see go2_dynamics_mujoco.integrate_forward:1385
     # and eval_safety_filter line 1099-1102). We mirror that exactly in PB
     # order here. The home PB-order stance matches the training DEFAULT_STANCE.
-    ACTION_SMOOTHING = 0.3  # from config agent.action_smoothing
+    # ACTION_SMOOTHING = 0.3  # from config agent.action_smoothing
+    ACTION_SMOOTHING = 0.5
     # MJLAB_DEFAULT_DOF_POS is MJ order [FL,FR,BL,BR]; PB order is [FL,BL,FR,BR]
     home_pb = np.array(wrapper.map(list(MJLAB_DEFAULT_DOF_POS), mj_order, pb_order),
                        dtype=np.float32)
