@@ -18,7 +18,11 @@ import os
 import numpy as np
 import threading
 
-from rl_controller.mjlab_controller import MjLabRLController, MUJOCO_ORDER
+from rl_controller.mjlab_controller import (
+    MjLabRLController,
+    MJLAB_DEFAULT_DOF_POS,
+    MUJOCO_ORDER,
+)
 from wrapper import Wrapper
 
 # ── Joint ordering ──
@@ -57,6 +61,11 @@ def main():
                         help="Print diagnostic summary every N control steps (25 @ 50Hz = 0.5s)")
     parser.add_argument("--hold_cmd_zero_steps", type=int, default=0,
                         help="Force cmd=[0,0,0] for the first N control steps to capture standstill behavior")
+    parser.add_argument("--standstill_norm", type=float, default=0.05,
+                        help="If ||cmd||_2 falls below this, bypass the policy and hold the "
+                             "default stand pose. The trained policy spent ~5%% of its time at "
+                             "cmd=0 and shakes under deployment Kp without this. Set to 0 to "
+                             "disable.")
     args = parser.parse_args()
 
     # ── Set up CSV log ──
@@ -173,14 +182,35 @@ def main():
                     [0.0, 0.0, 0.0] if step < args.hold_cmd_zero_steps else command
                 )
 
-                # Get walking policy action (returns MuJoCo order targets)
-                target_mj_raw = controller.get_action(wrapper, command=active_cmd)
-
-                # Clip joint limits
-                target_mj = np.array(target_mj_raw).copy()
-                target_mj[[0, 3, 6, 9]] = np.clip(target_mj[[0, 3, 6, 9]], -0.7, 0.7)      # hip
-                target_mj[[1, 4, 7, 10]] = np.clip(target_mj[[1, 4, 7, 10]], -1.5, 1.5)    # thigh
-                target_mj[[2, 5, 8, 11]] = np.clip(target_mj[[2, 5, 8, 11]], -2.7, -0.85)  # calf
+                # Stand-still bypass: at near-zero command, hold the default
+                # standing pose directly instead of running the policy. The
+                # trained policy's cmd≈0 attractor is weak (~5% of training
+                # envs sampled zero command, and most rewards are gated off
+                # at cmd_norm < 0.1), so its output oscillates and the 4×
+                # deployment Kp amplifies that into visible shaking. We
+                # still build the obs from the live state for logging, and
+                # zero the controller's last_action so it restarts cleanly
+                # when motion is commanded again.
+                if (
+                    args.standstill_norm > 0.0
+                    and np.linalg.norm(active_cmd) < args.standstill_norm
+                ):
+                    target_mj = MJLAB_DEFAULT_DOF_POS.copy()
+                    controller._last_action = np.zeros(12, dtype=np.float32)
+                    controller._last_raw_action = np.zeros(12, dtype=np.float32)
+                    controller._last_target = target_mj.copy()
+                    # build_observation does not mutate policy state — safe to call.
+                    controller._last_obs = (
+                        controller.build_observation(wrapper, active_cmd).cpu().numpy()
+                    )
+                else:
+                    # Get walking policy action (returns MuJoCo order targets)
+                    target_mj_raw = controller.get_action(wrapper, command=active_cmd)
+                    target_mj = np.array(target_mj_raw).copy()
+                    # Clip joint limits
+                    target_mj[[0, 3, 6, 9]] = np.clip(target_mj[[0, 3, 6, 9]], -0.7, 0.7)      # hip
+                    target_mj[[1, 4, 7, 10]] = np.clip(target_mj[[1, 4, 7, 10]], -1.5, 1.5)    # thigh
+                    target_mj[[2, 5, 8, 11]] = np.clip(target_mj[[2, 5, 8, 11]], -2.7, -0.85)  # calf
 
                 # Send to robot (wrapper.update remaps from sim_order to hardware order)
                 wrapper.update(target_mj, input_order=sim_order)
